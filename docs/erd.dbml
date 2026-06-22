@@ -1,0 +1,322 @@
+Project sistem_manajemen_dan_gamifikasi {
+  database_type: 'MySQL'
+  Note: 'ERD dibuat dari migration dan model Laravel. Tabel teknis Laravel seperti cache, jobs, sessions, password_reset_tokens tidak dimasukkan agar diagram fokus ke domain aplikasi.'
+}
+
+Enum user_role {
+  admin
+  ormawa
+  anggota
+}
+
+Enum status_akun {
+  aktif
+  nonaktif
+}
+
+Enum tipe_admin {
+  DPM
+  staff_dosen
+}
+
+Enum status_kegiatan {
+  pending
+  valid
+  ditolak
+}
+
+Enum status_verifikasi {
+  valid
+  ditolak
+}
+
+Enum jenis_voting {
+  kegiatan
+  ketua
+}
+
+Enum status_voting {
+  aktif
+  selesai
+}
+
+Enum status_baca_chat {
+  terkirim
+  dibaca
+}
+
+Enum sumber_poin {
+  kegiatan
+  komentar
+  balasan
+  voting
+  like
+}
+
+Enum tipe_leaderboard {
+  individu
+  ormawa
+}
+
+Table users {
+  id_user bigint [pk, increment]
+  nama varchar
+  email varchar [unique]
+  email_verified_at timestamp [null]
+  password varchar
+  poin int [default: 0]
+  role user_role [default: 'anggota']
+  id_ormawa bigint [null]
+  status_akun status_akun [default: 'aktif']
+  remember_token varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table admin_profiles {
+  id_admin_profile bigint [pk, increment]
+  id_user bigint [not null, unique]
+  tipe_admin tipe_admin [not null]
+  nip_nidn varchar [null]
+  jabatan varchar [null]
+  unit_kerja varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table ormawas {
+  id_ormawa bigint [pk, increment]
+  nama_ormawa varchar
+  deskripsi text [null]
+  total_poin int [default: 0]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kategori_kegiatans {
+  id bigint [pk, increment]
+  nama_kategori varchar [unique]
+  deskripsi text [null]
+  poin_dasar int [default: 0]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kegiatans {
+  id_kegiatan bigint [pk, increment]
+  id_ormawa bigint [not null]
+  kategori_id bigint [null]
+  nama_kegiatan varchar
+  deskripsi text
+  tanggal date
+  poin_kegiatan int [default: 0]
+  status status_kegiatan [default: 'pending']
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table dokumentasi_kegiatans {
+  id_dokumentasi bigint [pk, increment]
+  id_kegiatan bigint [not null]
+  id_ormawa bigint [not null]
+  caption text [null]
+  file_url varchar
+  tanggal_upload datetime
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table verifikasis {
+  id_verifikasi bigint [pk, increment]
+  id_kegiatan bigint [not null]
+  id_admin bigint [not null]
+  catatan text [null]
+  status status_verifikasi
+  tanggal_verifikasi datetime [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table votings {
+  id_voting bigint [pk, increment]
+  id_kegiatan bigint [not null]
+  id_ormawa bigint [null]
+  judul_voting varchar [null]
+  tanggal_mulai datetime
+  tanggal_selesai datetime
+  jenis_voting jenis_voting
+  status status_voting [default: 'aktif']
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table vote_details {
+  id_vote bigint [pk, increment]
+  id_voting bigint [not null]
+  id_user bigint [not null]
+  pilihan varchar
+  tanggal_vote datetime [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  indexes {
+    (id_voting, id_user) [unique]
+  }
+}
+
+Table diskusis {
+  id_diskusi bigint [pk, increment]
+  id_kegiatan bigint [not null]
+  id_user bigint [not null]
+  parent_id bigint [null]
+  komentar text
+  tanggal datetime
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table like_kegiatans {
+  id_like bigint [pk, increment]
+  id_kegiatan bigint [not null]
+  id_user bigint [not null]
+  tanggal datetime
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  indexes {
+    (id_kegiatan, id_user) [unique]
+  }
+}
+
+Table chats {
+  id_chat bigint [pk, increment]
+  id_pengirim bigint [not null]
+  id_penerima bigint [not null]
+  pesan text
+  status_baca status_baca_chat [default: 'terkirim']
+  tanggal datetime
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table poin_logs {
+  id_poin_log bigint [pk, increment]
+  id_user bigint [null]
+  id_ormawa bigint [null]
+  sumber sumber_poin
+  referensi_id bigint
+  poin int
+  keterangan text [null]
+  tanggal datetime
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table leaderboards {
+  id_leaderboard bigint [pk, increment]
+  tipe tipe_leaderboard
+  periode varchar [default: 'all_time']
+  tanggal_generate datetime [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table leaderboard_details {
+  id_detail bigint [pk, increment]
+  id_leaderboard bigint [not null]
+  id_user bigint [null]
+  id_ormawa bigint [null]
+  poin int [default: 0]
+  ranking int [default: 0]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  Note: 'Constraint dari migration: hanya salah satu dari id_user atau id_ormawa yang boleh terisi.'
+}
+
+Table penilaians {
+  id bigint [pk, increment]
+  kegiatan_id bigint [not null]
+  juri_id bigint [not null]
+  nilai_kreativitas int [default: 0]
+  nilai_dampak int [default: 0]
+  nilai_partisipasi int [default: 0]
+  nilai_publikasi int [default: 0]
+  total_nilai int [default: 0]
+  komentar text [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  indexes {
+    (kegiatan_id, juri_id) [unique]
+  }
+}
+
+Table badges {
+  id bigint [pk, increment]
+  nama_badge varchar [unique]
+  deskripsi text [null]
+  minimal_poin int [default: 0]
+  icon varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table ormawa_badges {
+  id bigint [pk, increment]
+  ormawa_id bigint [not null]
+  badge_id bigint [not null]
+  tanggal_diperoleh date [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  indexes {
+    (ormawa_id, badge_id) [unique]
+  }
+}
+
+Table personal_access_tokens {
+  id bigint [pk, increment]
+  tokenable_type varchar
+  tokenable_id bigint
+  name text
+  token varchar(64) [unique]
+  abilities text [null]
+  last_used_at timestamp [null]
+  expires_at timestamp [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  indexes {
+    (tokenable_type, tokenable_id)
+  }
+}
+
+Ref: users.id_ormawa > ormawas.id_ormawa [delete: set null]
+Ref: admin_profiles.id_user > users.id_user [delete: cascade]
+Ref: kegiatans.id_ormawa > ormawas.id_ormawa [delete: cascade]
+Ref: kegiatans.kategori_id > kategori_kegiatans.id [delete: set null]
+Ref: dokumentasi_kegiatans.id_kegiatan > kegiatans.id_kegiatan [delete: cascade]
+Ref: dokumentasi_kegiatans.id_ormawa > ormawas.id_ormawa [delete: cascade]
+Ref: verifikasis.id_kegiatan > kegiatans.id_kegiatan [delete: cascade]
+Ref: verifikasis.id_admin > users.id_user [delete: restrict]
+Ref: votings.id_kegiatan > kegiatans.id_kegiatan [delete: cascade]
+Ref: votings.id_ormawa > ormawas.id_ormawa [delete: set null]
+Ref: vote_details.id_voting > votings.id_voting [delete: cascade]
+Ref: vote_details.id_user > users.id_user [delete: cascade]
+Ref: diskusis.id_kegiatan > kegiatans.id_kegiatan [delete: cascade]
+Ref: diskusis.id_user > users.id_user [delete: cascade]
+Ref: diskusis.parent_id > diskusis.id_diskusi [delete: set null]
+Ref: like_kegiatans.id_kegiatan > kegiatans.id_kegiatan [delete: cascade]
+Ref: like_kegiatans.id_user > users.id_user [delete: cascade]
+Ref: chats.id_pengirim > users.id_user [delete: cascade]
+Ref: chats.id_penerima > users.id_user [delete: cascade]
+Ref: poin_logs.id_user > users.id_user [delete: cascade]
+Ref: poin_logs.id_ormawa > ormawas.id_ormawa [delete: cascade]
+Ref: leaderboard_details.id_leaderboard > leaderboards.id_leaderboard [delete: cascade]
+Ref: leaderboard_details.id_user > users.id_user [delete: cascade]
+Ref: leaderboard_details.id_ormawa > ormawas.id_ormawa [delete: cascade]
+Ref: penilaians.kegiatan_id > kegiatans.id_kegiatan [delete: cascade]
+Ref: penilaians.juri_id > users.id_user [delete: restrict]
+Ref: ormawa_badges.ormawa_id > ormawas.id_ormawa [delete: cascade]
+Ref: ormawa_badges.badge_id > badges.id [delete: cascade]
