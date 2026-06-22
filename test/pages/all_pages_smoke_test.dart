@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/app.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/pages/activity_list_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
@@ -18,6 +19,8 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentat
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/profile_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/settings_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/leaderboard/presentation/pages/leaderboard_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/repositories/voting_repository.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/pages/voting_page.dart';
 
 class _FakeAuthRepository implements AuthRepository {
@@ -54,10 +57,81 @@ class _TestAuthController extends AuthController {
           _FakeAuthRepository(user),
         ) {
     state = AuthState(
-      status: user == null ? AuthStatus.unauthenticated : AuthStatus.authenticated,
+      status: user == null
+          ? AuthStatus.unauthenticated
+          : AuthStatus.authenticated,
       user: user,
       token: user == null ? null : 'test-token',
     );
+  }
+}
+
+class _FakeVotingRepository implements VotingRepository {
+  final List<Voting> _items = [
+    Voting(
+      id: 'v1',
+      type: VotingType.kegiatan,
+      relatedId: 'activity-1',
+      startDate: DateTime(2026),
+      endDate: DateTime(2027),
+      options: const [
+        VoteOption(id: 'o1', title: 'Seminar Karier', votes: 12),
+        VoteOption(id: 'o2', title: 'Workshop UI/UX', votes: 8),
+      ],
+      voterIds: const {},
+    ),
+  ];
+
+  @override
+  Future<List<Voting>> getVotings() async => _items;
+
+  @override
+  Future<Voting> createVoting({
+    required String title,
+    required VotingType type,
+    required DateTime startDate,
+    required DateTime endDate,
+    required List<String> pollOptions,
+  }) async {
+    final voting = Voting(
+      id: 'v${_items.length + 1}',
+      type: type,
+      relatedId: title,
+      startDate: startDate,
+      endDate: endDate,
+      options: [
+        for (final option in pollOptions)
+          VoteOption(id: option, title: option, votes: 0),
+      ],
+      voterIds: const {},
+    );
+    _items.add(voting);
+    return voting;
+  }
+
+  @override
+  Future<Voting> castVote({
+    required String votingId,
+    required String optionId,
+    required String userId,
+  }) async {
+    final voting = _items.firstWhere((item) => item.id == votingId);
+    return voting;
+  }
+
+  @override
+  Future<Voting> updatePeriod({
+    required String votingId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final index = _items.indexWhere((item) => item.id == votingId);
+    final voting = _items[index].copyWith(
+      startDate: startDate,
+      endDate: endDate,
+    );
+    _items[index] = voting;
+    return voting;
   }
 }
 
@@ -106,6 +180,7 @@ Future<void> _pumpPage(
     ProviderScope(
       overrides: [
         authControllerProvider.overrideWith((ref) => _TestAuthController(user)),
+        votingRepositoryProvider.overrideWithValue(_FakeVotingRepository()),
       ],
       child: MaterialApp(home: page),
     ),
