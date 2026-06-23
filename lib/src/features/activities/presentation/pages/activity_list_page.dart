@@ -8,6 +8,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presenta
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/presentation/widgets/discussion_section.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/pages/manage_category_page.dart';
 
 class ActivityListPage extends ConsumerStatefulWidget {
   const ActivityListPage({super.key});
@@ -17,6 +18,14 @@ class ActivityListPage extends ConsumerStatefulWidget {
 }
 
 class _ActivityListPageState extends ConsumerState<ActivityListPage> {
+  final List<String> listKategori = [
+    'Kegiatan',
+    'Seminar',
+    'Pelatihan',
+    'Kompetisi',
+    'Pengabdian',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -30,8 +39,22 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
     final state = ref.watch(activityControllerProvider);
     final user = ref.watch(authControllerProvider).user;
 
+    final canManageCategories =
+        user?.role == UserRole.adminFaculty ||
+        user?.role == UserRole.ormawaAccount;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Feed Kegiatan')),
+      appBar: AppBar(
+        title: const Text('Feed Kegiatan'),
+        actions: [
+          if (canManageCategories)
+            IconButton(
+              tooltip: 'Kelola kategori',
+              onPressed: _openManageCategoryPage,
+              icon: const Icon(Icons.category_outlined),
+            ),
+        ],
+      ),
       floatingActionButton: user?.role == UserRole.ormawaAccount
           ? FloatingActionButton.extended(
               onPressed: () => _showActivityFormDialog(context),
@@ -97,9 +120,9 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
     final isEditing = activity != null;
     final titleController = TextEditingController(text: activity?.title);
     final descController = TextEditingController(text: activity?.description);
-    final categoryController = TextEditingController(
-      text: activity?.category ?? 'Kegiatan',
-    );
+    var selectedCategory = listKategori.contains(activity?.category)
+        ? activity!.category
+        : listKategori.first;
     final docsController = TextEditingController(text: activity?.documentation);
     DateTime selectedDate = activity?.date ?? DateTime.now();
     final formKey = GlobalKey<FormState>();
@@ -110,8 +133,14 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final hasDocumentation = docsController.text.trim().isNotEmpty;
+
             return AlertDialog(
-              title: Text(isEditing ? 'Edit Kegiatan' : 'Input Kegiatan'),
+              backgroundColor: const Color(0xFF0B1024),
+              title: Text(
+                isEditing ? 'Edit Kegiatan' : 'Input Kegiatan',
+                style: const TextStyle(color: Colors.white),
+              ),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -120,143 +149,285 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                     children: [
                       TextFormField(
                         controller: titleController,
-                        decoration: const InputDecoration(labelText: 'Judul'),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Judul',
+                          prefixIcon: Icon(Icons.event_note_outlined),
+                        ),
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Wajib diisi'
                             : null,
                       ),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: descController,
+                        style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
                           labelText: 'Deskripsi',
+                          prefixIcon: Icon(Icons.notes_rounded),
                         ),
                         maxLines: 3,
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Wajib diisi'
                             : null,
                       ),
-                      TextFormField(
-                        controller: categoryController,
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: selectedCategory,
+                        dropdownColor: const Color(0xFF111827),
                         decoration: const InputDecoration(
                           labelText: 'Kategori',
+                          prefixIcon: Icon(Icons.category_outlined),
                         ),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        items: listKategori
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category,
+                                child: Text(category),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: isSubmitting
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedCategory = value);
+                              },
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Wajib diisi'
                             : null,
                       ),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: docsController,
-                        decoration: const InputDecoration(
+                        style: const TextStyle(color: Colors.white),
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
                           labelText: 'Dokumentasi URL',
+                          helperText: hasDocumentation
+                              ? 'Dokumentasi berhasil ditautkan'
+                              : 'Tempel URL atau lampirkan file dokumentasi',
+                          helperStyle: TextStyle(
+                            color: hasDocumentation
+                                ? Colors.greenAccent
+                                : Colors.white60,
+                          ),
+                          prefixIcon: Icon(
+                            hasDocumentation
+                                ? Icons.check_circle_rounded
+                                : Icons.link_rounded,
+                            color: hasDocumentation
+                                ? Colors.greenAccent
+                                : null,
+                          ),
+                          suffixIcon: IconButton(
+                            tooltip: 'Lampirkan dokumentasi',
+                            onPressed: isSubmitting
+                                ? null
+                                : () {
+                                    docsController.text =
+                                        'galeri/dokumentasi_kegiatan.pdf';
+                                    setDialogState(() {});
+                                  },
+                            icon: const Icon(Icons.attach_file),
+                          ),
                         ),
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Wajib diisi'
                             : null,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Tanggal: ${DateFormat('dd MMM yyyy').format(selectedDate)}',
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: isSubmitting
-                                ? null
-                                : () async {
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      firstDate: DateTime(2024),
-                                      lastDate: DateTime(2035),
-                                      initialDate: selectedDate,
-                                    );
-                                    if (picked != null) {
-                                      setDialogState(
-                                        () => selectedDate = picked,
-                                      );
-                                    }
-                                  },
-                            child: const Text('Pilih'),
-                          ),
-                        ],
+                      const SizedBox(height: 16),
+                      _DatePickerCard(
+                        selectedDate: selectedDate,
+                        isDisabled: isSubmitting,
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            firstDate: DateTime(2024),
+                            lastDate: DateTime(2035),
+                            initialDate: selectedDate,
+                          );
+                          if (picked != null) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
                       ),
                     ],
                   ),
                 ),
               ),
+              actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
               actions: [
                 TextButton(
                   onPressed: isSubmitting ? null : () => Navigator.pop(context),
                   child: const Text('Batal'),
                 ),
-                FilledButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () async {
-                          if (!formKey.currentState!.validate()) return;
-                          setDialogState(() => isSubmitting = true);
-                          try {
-                            final notifier = ref.read(
-                              activityControllerProvider.notifier,
-                            );
-                            if (isEditing) {
-                              await notifier.update(
-                                activity: activity,
-                                title: titleController.text.trim(),
-                                description: descController.text.trim(),
-                                date: selectedDate,
-                                documentation: docsController.text.trim(),
-                                category: categoryController.text.trim(),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setDialogState(() => isSubmitting = true);
+                            try {
+                              final notifier = ref.read(
+                                activityControllerProvider.notifier,
                               );
-                            } else {
-                              await notifier.create(
-                                title: titleController.text.trim(),
-                                description: descController.text.trim(),
-                                date: selectedDate,
-                                documentation: docsController.text.trim(),
-                                category: categoryController.text.trim(),
+                              if (isEditing) {
+                                await notifier.update(
+                                  activity: activity,
+                                  title: titleController.text.trim(),
+                                  description: descController.text.trim(),
+                                  date: selectedDate,
+                                  documentation: docsController.text.trim(),
+                                  category: selectedCategory,
+                                );
+                              } else {
+                                await notifier.create(
+                                  title: titleController.text.trim(),
+                                  description: descController.text.trim(),
+                                  date: selectedDate,
+                                  documentation: docsController.text.trim(),
+                                  category: selectedCategory,
+                                );
+                              }
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isEditing
+                                        ? 'Kegiatan berhasil diperbarui.'
+                                        : 'Kegiatan berhasil diajukan dan menunggu verifikasi.',
+                                  ),
+                                ),
+                              );
+                            } on AppException catch (e) {
+                              if (!context.mounted) return;
+                              setDialogState(() => isSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.message)),
+                              );
+                            } catch (_) {
+                              if (!context.mounted) return;
+                              setDialogState(() => isSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Kegiatan gagal disimpan.'),
+                                ),
                               );
                             }
-                            if (!context.mounted) return;
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  isEditing
-                                      ? 'Kegiatan berhasil diperbarui.'
-                                      : 'Kegiatan berhasil diajukan dan menunggu verifikasi.',
-                                ),
-                              ),
-                            );
-                          } on AppException catch (e) {
-                            if (!context.mounted) return;
-                            setDialogState(() => isSubmitting = false);
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text(e.message)));
-                          } catch (_) {
-                            if (!context.mounted) return;
-                            setDialogState(() => isSubmitting = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Kegiatan gagal disimpan.'),
-                              ),
-                            );
-                          }
-                        },
-                  child: isSubmitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Simpan'),
+                          },
+                    icon: isSubmitting
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded),
+                    label: const Text('Simpan'),
+                  ),
                 ),
               ],
             );
           },
         );
       },
+    );
+  }
+
+  Future<void> _openManageCategoryPage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ManageCategoryPage(
+          initialCategories: listKategori,
+          onCategoriesChanged: (categories) {
+            setState(() {
+              listKategori
+                ..clear()
+                ..addAll(categories);
+              if (listKategori.isEmpty) listKategori.add('Kegiatan');
+            });
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _DatePickerCard extends StatelessWidget {
+  const _DatePickerCard({
+    required this.selectedDate,
+    required this.isDisabled,
+    required this.onTap,
+  });
+
+  final DateTime selectedDate;
+  final bool isDisabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF111827),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: isDisabled ? null : onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.calendar_today_rounded,
+                  color: Color(0xFFC4B5FD),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tanggal Kegiatan',
+                      style: TextStyle(color: Colors.white60, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('dd MMM yyyy').format(selectedDate),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_right_rounded),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

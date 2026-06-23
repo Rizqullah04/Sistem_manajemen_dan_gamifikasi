@@ -134,7 +134,13 @@ class VotingRepositoryImpl implements VotingRepository {
           DateTime.now(),
       options: options,
       voterIds: voters,
+      status: _statusFrom(json['status']),
     );
+  }
+
+  String _statusFrom(Object? value) {
+    final status = value?.toString().toUpperCase();
+    return status == 'SELESAI' ? 'SELESAI' : 'AKTIF';
   }
 
   String _creatorNameFrom(Map<String, dynamic> json) {

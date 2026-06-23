@@ -790,11 +790,12 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
 
   Widget _buildSidebar(BuildContext context, User user) {
     final items = const [
-      (icon: Icons.home_rounded, label: 'Home'),
-      (icon: Icons.emoji_events_outlined, label: 'Rank'),
-      (icon: Icons.event_note_outlined, label: 'Activity'),
-      (icon: Icons.person_rounded, label: 'Profile'),
-      (icon: Icons.settings_outlined, label: 'Pengaturan'),
+      (icon: Icons.home_rounded, label: 'Home', route: null),
+      (icon: Icons.emoji_events_outlined, label: 'Rank', route: null),
+      (icon: Icons.event_note_outlined, label: 'Activity', route: null),
+      (icon: Icons.how_to_vote_rounded, label: 'Voting', route: '/voting'),
+      (icon: Icons.person_rounded, label: 'Profile', route: null),
+      (icon: Icons.settings_outlined, label: 'Pengaturan', route: '/settings'),
     ];
 
     return Drawer(
@@ -857,23 +858,27 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
               const SizedBox(height: 12),
               ...List.generate(
                 items.length,
-                (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildSidebarItem(
-                    context,
-                    icon: items[index].icon,
-                    label: items[index].label,
-                    isActive: _selectedIndex == index,
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (index == 4) {
-                        context.push('/settings');
-                        return;
-                      }
-                      setState(() => _selectedIndex = index);
-                    },
-                  ),
-                ),
+                (index) {
+                  final route = items[index].route;
+                  final internalIndex = index > 3 ? index - 1 : index;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildSidebarItem(
+                      context,
+                      icon: items[index].icon,
+                      label: items[index].label,
+                      isActive: route == null && _selectedIndex == internalIndex,
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (route != null) {
+                          context.push(route);
+                          return;
+                        }
+                        setState(() => _selectedIndex = internalIndex);
+                      },
+                    ),
+                  );
+                },
               ),
               const Spacer(),
               OutlinedButton.icon(

@@ -10,6 +10,7 @@ class VotingModel {
     required this.endTime,
     required this.totalParticipants,
     required this.targetParticipants,
+    this.status = 'AKTIF',
     this.candidates = const [],
     this.activities = const [],
   });
@@ -19,6 +20,7 @@ class VotingModel {
   final DateTime endTime;
   final int totalParticipants;
   final int targetParticipants;
+  final String status;
   final List<CandidateVotingOption> candidates;
   final List<ActivityVotingOption> activities;
 

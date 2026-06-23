@@ -24,6 +24,7 @@ class AdminSidebar extends ConsumerWidget {
     final initials = displayName.isNotEmpty
         ? displayName[0].toUpperCase()
         : 'U';
+    final currentPath = GoRouterState.of(context).uri.path;
 
     return SingleChildScrollView(
       child: SafeArea(
@@ -109,6 +110,8 @@ class AdminSidebar extends ConsumerWidget {
                   context,
                   icon: Icons.home_outlined,
                   label: 'Dashboard',
+                  selected:
+                      dashboardHomeRoute(user?.role) == currentPath,
                   onTap: () {
                     final route = dashboardHomeRoute(user?.role);
                     if (route == null) return;
@@ -118,22 +121,12 @@ class AdminSidebar extends ConsumerWidget {
                     context.go(route);
                   },
                 ),
-              _buildMenuItem(
-                context,
-                icon: Icons.person_outline,
-                label: 'Profil',
-                onTap: () {
-                  if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
-                    Navigator.pop(context);
-                  }
-                  context.push('/profile');
-                },
-              ),
               if (user?.role == UserRole.ormawaAccount)
                 _buildMenuItem(
                   context,
                   icon: Icons.groups_outlined,
                   label: 'Anggota Ormawa',
+                  selected: currentPath == '/ormawa/members',
                   onTap: () {
                     if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
                       Navigator.pop(context);
@@ -146,6 +139,7 @@ class AdminSidebar extends ConsumerWidget {
                   context,
                   icon: Icons.apartment_rounded,
                   label: 'Data Ormawa',
+                  selected: currentPath == '/admin/ormawas',
                   onTap: () {
                     _closeDrawerAndPush(context, '/admin/ormawas');
                   },
@@ -156,6 +150,7 @@ class AdminSidebar extends ConsumerWidget {
                 context,
                 icon: Icons.settings_outlined,
                 label: 'Pengaturan',
+                selected: currentPath == '/settings',
                 onTap: () {
                   if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
                     Navigator.pop(context);
@@ -167,6 +162,7 @@ class AdminSidebar extends ConsumerWidget {
                 context,
                 icon: Icons.event_note_outlined,
                 label: 'Kegiatan',
+                selected: currentPath == '/activities',
                 onTap: () {
                   if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
                     Navigator.pop(context);
@@ -176,24 +172,38 @@ class AdminSidebar extends ConsumerWidget {
               ),
               _buildMenuItem(
                 context,
-                icon: Icons.leaderboard_outlined,
-                label: 'Leaderboard',
-                onTap: () {
-                  if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
-                    Navigator.pop(context);
-                  }
-                  context.push('/leaderboard');
-                },
-              ),
-              _buildMenuItem(
-                context,
-                icon: Icons.how_to_vote_outlined,
+                icon: Icons.how_to_vote_rounded,
                 label: 'Voting',
+                selected: currentPath == '/voting',
                 onTap: () {
                   if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
                     Navigator.pop(context);
                   }
                   context.push('/voting');
+                },
+              ),
+              _buildMenuItem(
+                context,
+                icon: Icons.person_outline,
+                label: 'Profil',
+                selected: currentPath == '/profile',
+                onTap: () {
+                  if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+                    Navigator.pop(context);
+                  }
+                  context.push('/profile');
+                },
+              ),
+              _buildMenuItem(
+                context,
+                icon: Icons.leaderboard_outlined,
+                label: 'Leaderboard',
+                selected: currentPath == '/leaderboard',
+                onTap: () {
+                  if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+                    Navigator.pop(context);
+                  }
+                  context.push('/leaderboard');
                 },
               ),
               const SizedBox(height: 20),
@@ -254,13 +264,25 @@ class AdminSidebar extends ConsumerWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool selected = false,
   }) {
     return Card(
+      color: selected ? const Color(0xFF6D28D9) : null,
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
+        selected: selected,
+        selectedColor: Colors.white,
+        iconColor: selected ? Colors.white : null,
+        textColor: selected ? Colors.white : null,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Icon(icon, size: 20),
-        title: Text(label, style: Theme.of(context).textTheme.labelLarge),
+        title: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: selected ? Colors.white : null,
+                fontWeight: selected ? FontWeight.w800 : null,
+              ),
+        ),
         onTap: onTap,
       ),
     );

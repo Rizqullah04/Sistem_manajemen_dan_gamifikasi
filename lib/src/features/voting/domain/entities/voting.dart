@@ -30,6 +30,7 @@ class Voting {
     required this.endDate,
     required this.options,
     required this.voterIds,
+    this.status = 'AKTIF',
   });
 
   final String id;
@@ -40,10 +41,11 @@ class Voting {
   final DateTime endDate;
   final List<VoteOption> options;
   final Set<String> voterIds;
+  final String status;
 
   bool get isActive {
     final now = DateTime.now();
-    return now.isAfter(startDate) && now.isBefore(endDate);
+    return status == 'AKTIF' && now.isAfter(startDate) && now.isBefore(endDate);
   }
 
   Voting copyWith({
@@ -55,6 +57,7 @@ class Voting {
     DateTime? endDate,
     List<VoteOption>? options,
     Set<String>? voterIds,
+    String? status,
   }) {
     return Voting(
       id: id ?? this.id,
@@ -65,6 +68,7 @@ class Voting {
       endDate: endDate ?? this.endDate,
       options: options ?? this.options,
       voterIds: voterIds ?? this.voterIds,
+      status: status ?? this.status,
     );
   }
 }

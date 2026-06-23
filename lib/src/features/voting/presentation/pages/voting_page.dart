@@ -27,7 +27,7 @@ class VotingPage extends ConsumerStatefulWidget {
 class _VotingPageState extends ConsumerState<VotingPage> {
   static const int _minKetuaPoints = 100;
   final Map<String, DateTime> _endDateOverrides = {};
-  final Set<String> _stoppedVotingIds = {};
+  final Map<String, String> _statusOverrides = {};
   final Set<String> _deletedVotingIds = {};
 
   @override
@@ -40,9 +40,8 @@ class _VotingPageState extends ConsumerState<VotingPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(votingControllerProvider);
     final user = ref.watch(authControllerProvider).user;
-    final canCreateVoting =
-        user?.role == UserRole.adminFaculty ||
-        user?.role == UserRole.ormawaAccount;
+    final userRole = _resolveUserRoleLabel(user?.role);
+    final canManageVoting = userRole == 'ADMIN' || userRole == 'ORMAWA';
 
     return Scaffold(
       appBar: AppBar(
@@ -54,7 +53,9 @@ class _VotingPageState extends ConsumerState<VotingPage> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => const VotingLogPage(),
+                  builder: (_) => VotingLogPage(
+                    completedVotes: _completedVotes(state.items),
+                  ),
                 ),
               );
             },
@@ -66,7 +67,7 @@ class _VotingPageState extends ConsumerState<VotingPage> {
           ),
         ],
       ),
-      floatingActionButton: canCreateVoting
+      floatingActionButton: canManageVoting
           ? FloatingActionButton.extended(
               onPressed: user == null
                   ? null
@@ -96,7 +97,9 @@ class _VotingPageState extends ConsumerState<VotingPage> {
             }
 
             final visibleItems = state.items
+                .map(_votingWithLocalState)
                 .where((item) => !_deletedVotingIds.contains(item.id))
+                .where((item) => item.status == 'AKTIF')
                 .toList(growable: false);
 
             if (visibleItems.isEmpty) {
@@ -119,19 +122,10 @@ class _VotingPageState extends ConsumerState<VotingPage> {
               itemCount: visibleItems.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final originalVoting = visibleItems[index];
-                final voting = originalVoting.copyWith(
-                  endDate: _stoppedVotingIds.contains(originalVoting.id)
-                      ? DateTime.now().subtract(const Duration(seconds: 1))
-                      : _endDateOverrides[originalVoting.id],
-                );
-                final isCreator =
-                    user?.role == UserRole.adminFaculty ||
-                    user?.role == UserRole.ormawaAccount;
+                final voting = visibleItems[index];
                 return _VotingCard(
                   voting: voting,
-                  isCreator: isCreator,
-                  isStopped: _stoppedVotingIds.contains(originalVoting.id),
+                  isCreator: canManageVoting,
                   onExtendPeriod: () => _extendVotingPeriod(voting),
                   onStopVoting: () => _confirmStopVoting(voting),
                   onDeleteVoting: () => _confirmDeleteVoting(voting),
@@ -142,6 +136,15 @@ class _VotingPageState extends ConsumerState<VotingPage> {
         ),
       ),
     );
+  }
+
+  String _resolveUserRoleLabel(UserRole? role) {
+    return switch (role) {
+      UserRole.adminFaculty => 'ADMIN',
+      UserRole.ormawaAccount => 'ORMAWA',
+      UserRole.memberAccount => 'ANGGOTA',
+      null => 'MAHASISWA',
+    };
   }
 
   Future<void> _extendVotingPeriod(Voting voting) async {
@@ -159,7 +162,7 @@ class _VotingPageState extends ConsumerState<VotingPage> {
 
     setState(() {
       _endDateOverrides[voting.id] = picked;
-      _stoppedVotingIds.remove(voting.id);
+      _statusOverrides[voting.id] = 'AKTIF';
     });
 
     try {
@@ -188,7 +191,7 @@ class _VotingPageState extends ConsumerState<VotingPage> {
     );
     if (confirmed != true) return;
     setState(() {
-      _stoppedVotingIds.add(voting.id);
+      _statusOverrides[voting.id] = 'SELESAI';
       _endDateOverrides[voting.id] = DateTime.now().subtract(
         const Duration(seconds: 1),
       );
@@ -239,6 +242,23 @@ class _VotingPageState extends ConsumerState<VotingPage> {
         );
       },
     );
+  }
+
+  Voting _votingWithLocalState(Voting voting) {
+    return voting.copyWith(
+      endDate: _endDateOverrides[voting.id],
+      status: _statusOverrides[voting.id],
+    );
+  }
+
+  List<Voting> _completedVotes(List<Voting> items) {
+    final now = DateTime.now();
+    return items
+        .map(_votingWithLocalState)
+        .where((item) => !_deletedVotingIds.contains(item.id))
+        .where((item) => item.status == 'SELESAI' || now.isAfter(item.endDate))
+        .map((item) => item.copyWith(status: 'SELESAI'))
+        .toList(growable: false);
   }
 }
 
@@ -880,7 +900,6 @@ class _VotingCard extends ConsumerWidget {
   const _VotingCard({
     required this.voting,
     required this.isCreator,
-    required this.isStopped,
     required this.onExtendPeriod,
     required this.onStopVoting,
     required this.onDeleteVoting,
@@ -888,7 +907,6 @@ class _VotingCard extends ConsumerWidget {
 
   final Voting voting;
   final bool isCreator;
-  final bool isStopped;
   final VoidCallback onExtendPeriod;
   final VoidCallback onStopVoting;
   final VoidCallback onDeleteVoting;
@@ -905,7 +923,7 @@ class _VotingCard extends ConsumerWidget {
     final creatorOrmawaName = voting.creatorName;
     final periodText =
         '${DateFormat('dd MMM').format(voting.startDate)} - ${DateFormat('dd MMM yyyy').format(voting.endDate)}';
-    final isFinished = isStopped || !voting.isActive;
+    final isFinished = voting.status == 'SELESAI' || !voting.isActive;
     void openLivePreview() {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -993,7 +1011,7 @@ class _VotingCard extends ConsumerWidget {
                 return _VoteOptionTile(
                   option: option,
                   ratio: ratio,
-                  canTap: voting.isActive && !isStopped && !hasVoted && user != null,
+                  canTap: voting.isActive && !hasVoted && user != null,
                   canVote: canUseVote,
                   ormawaName: creatorOrmawaName,
                   onVote: () async {
@@ -1478,6 +1496,7 @@ VotingModel _buildLivePreviewData({
     endTime: voting.endDate,
     totalParticipants: totalVotes,
     targetParticipants: participantTarget,
+    status: voting.status,
     candidates: isKetua
         ? voting.options
               .map(

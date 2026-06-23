@@ -1,38 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
 
 class VotingLogPage extends StatefulWidget {
-  const VotingLogPage({super.key});
+  const VotingLogPage({required this.completedVotes, super.key});
+
+  final List<Voting> completedVotes;
 
   @override
   State<VotingLogPage> createState() => _VotingLogPageState();
 }
 
 class _VotingLogPageState extends State<VotingLogPage> {
-  final List<_VotingLogItem> _items = const [
-    _VotingLogItem(
-      title: 'Voting Program Kegiatan',
-      creatorName: 'BEM Fakultas Teknik',
-      period: '02 Jun 2026 - 16 Jun 2026',
-      winner: 'FTJ',
-      winnerPercentage: 65,
-      options: [
-        _VotingLogOption(name: 'FTJ', percentage: 65, votes: 156),
-        _VotingLogOption(name: 'WEBINAR', percentage: 35, votes: 84),
-      ],
-    ),
-    _VotingLogItem(
-      title: 'Voting Ketua Ormawa',
-      creatorName: 'Himpunan Mahasiswa Teknologi Informasi',
-      period: '11 Mei 2026 - 25 Mei 2026',
-      winner: 'Arjun Wijaya',
-      winnerPercentage: 58,
-      options: [
-        _VotingLogOption(name: 'Arjun Wijaya', percentage: 58, votes: 132),
-        _VotingLogOption(name: 'Nadia Putri', percentage: 42, votes: 96),
-      ],
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -50,26 +30,56 @@ class _VotingLogPageState extends State<VotingLogPage> {
           foregroundColor: Colors.white,
           title: const Text('Log Riwayat Voting'),
         ),
-        body: ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: _items.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 14),
-          itemBuilder: (context, index) {
-            return _VotingLogCard(item: _items[index]);
-          },
-        ),
+        body: widget.completedVotes.isEmpty
+            ? const _EmptyVotingLog()
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: widget.completedVotes.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                itemBuilder: (context, index) {
+                  return _VotingLogCard(voting: widget.completedVotes[index]);
+                },
+              ),
       ),
     );
   }
 }
 
-class _VotingLogCard extends StatelessWidget {
-  const _VotingLogCard({required this.item});
-
-  final _VotingLogItem item;
+class _EmptyVotingLog extends StatelessWidget {
+  const _EmptyVotingLog();
 
   @override
   Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 120),
+        EmptyState(
+          title: 'Belum ada riwayat voting',
+          subtitle: 'Voting yang sudah selesai akan muncul di halaman ini.',
+          icon: Icons.history_rounded,
+        ),
+      ],
+    );
+  }
+}
+
+class _VotingLogCard extends StatelessWidget {
+  const _VotingLogCard({required this.voting});
+
+  final Voting voting;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalVotes = voting.options.fold<int>(
+      0,
+      (sum, option) => sum + option.votes,
+    );
+    final winner = _winnerOption(voting.options);
+    final winnerPercent = totalVotes == 0
+        ? 0
+        : ((winner.votes / totalVotes) * 100).round();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -95,7 +105,9 @@ class _VotingLogCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title,
+                      voting.type == VotingType.kegiatan
+                          ? 'Voting Program Kegiatan'
+                          : 'Voting Ketua Ormawa',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -103,14 +115,14 @@ class _VotingLogCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.creatorName,
+                      voting.creatorName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.white70),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.period,
+                      _periodText(voting),
                       style: const TextStyle(
                         color: Color(0xFFC4B5FD),
                         fontWeight: FontWeight.w700,
@@ -124,7 +136,12 @@ class _VotingLogCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ...item.options.map((option) => _VotingLogOptionRow(option: option)),
+          ...voting.options.map(
+            (option) => _VotingLogOptionRow(
+              option: option,
+              totalVotes: totalVotes,
+            ),
+          ),
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
@@ -136,17 +153,42 @@ class _VotingLogCard extends StatelessWidget {
                 color: const Color(0xFFC4B5FD).withValues(alpha: 0.18),
               ),
             ),
-            child: Text(
-              '🏆 Hasil Akhir: ${item.winner} Menang (${item.winnerPercentage}% Suara)',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-              ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.emoji_events_rounded,
+                  color: Color(0xFFFDE68A),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Hasil Akhir: ${winner.title} Menang ($winnerPercent% Suara)',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  VoteOption _winnerOption(List<VoteOption> options) {
+    if (options.isEmpty) {
+      return const VoteOption(id: '-', title: '-', votes: 0);
+    }
+    return options.reduce(
+      (current, next) => next.votes > current.votes ? next : current,
+    );
+  }
+
+  String _periodText(Voting voting) {
+    final formatter = DateFormat('dd MMM yyyy');
+    return '${formatter.format(voting.startDate)} - ${formatter.format(voting.endDate)}';
   }
 }
 
@@ -160,7 +202,9 @@ class _FinishedBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF22C55E).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+        ),
       ),
       child: const Text(
         'SELESAI',
@@ -175,12 +219,19 @@ class _FinishedBadge extends StatelessWidget {
 }
 
 class _VotingLogOptionRow extends StatelessWidget {
-  const _VotingLogOptionRow({required this.option});
+  const _VotingLogOptionRow({
+    required this.option,
+    required this.totalVotes,
+  });
 
-  final _VotingLogOption option;
+  final VoteOption option;
+  final int totalVotes;
 
   @override
   Widget build(BuildContext context) {
+    final ratio = totalVotes == 0 ? 0.0 : option.votes / totalVotes;
+    final percentage = (ratio * 100).round();
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
@@ -190,7 +241,7 @@ class _VotingLogOptionRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  option.name,
+                  option.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -201,14 +252,17 @@ class _VotingLogOptionRow extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                '${option.votes} suara',
+                '${option.votes} suara - $percentage%',
                 style: const TextStyle(color: Colors.white70),
               ),
             ],
           ),
           const SizedBox(height: 7),
           TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: option.percentage / 100),
+            tween: Tween<double>(
+              begin: 0,
+              end: ratio.clamp(0.0, 1.0).toDouble(),
+            ),
             duration: const Duration(milliseconds: 700),
             curve: Curves.easeOutCubic,
             builder: (context, value, _) {
@@ -227,34 +281,4 @@ class _VotingLogOptionRow extends StatelessWidget {
       ),
     );
   }
-}
-
-class _VotingLogItem {
-  const _VotingLogItem({
-    required this.title,
-    required this.creatorName,
-    required this.period,
-    required this.winner,
-    required this.winnerPercentage,
-    required this.options,
-  });
-
-  final String title;
-  final String creatorName;
-  final String period;
-  final String winner;
-  final int winnerPercentage;
-  final List<_VotingLogOption> options;
-}
-
-class _VotingLogOption {
-  const _VotingLogOption({
-    required this.name,
-    required this.percentage,
-    required this.votes,
-  });
-
-  final String name;
-  final int percentage;
-  final int votes;
 }

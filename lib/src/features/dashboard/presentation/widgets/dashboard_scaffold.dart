@@ -59,7 +59,7 @@ class DashboardScaffold extends ConsumerWidget {
           if (!showFixedSidebar)
             IconButton(
               onPressed: () => context.push('/voting'),
-              icon: const Icon(Icons.how_to_vote_outlined),
+              icon: const Icon(Icons.how_to_vote_rounded),
               tooltip: 'Voting',
             ),
         ],
