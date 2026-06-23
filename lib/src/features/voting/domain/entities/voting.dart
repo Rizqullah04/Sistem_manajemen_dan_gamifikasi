@@ -25,6 +25,7 @@ class Voting {
     required this.id,
     required this.type,
     required this.relatedId,
+    required this.creatorName,
     required this.startDate,
     required this.endDate,
     required this.options,
@@ -34,6 +35,7 @@ class Voting {
   final String id;
   final VotingType type;
   final String relatedId;
+  final String creatorName;
   final DateTime startDate;
   final DateTime endDate;
   final List<VoteOption> options;
@@ -48,6 +50,7 @@ class Voting {
     String? id,
     VotingType? type,
     String? relatedId,
+    String? creatorName,
     DateTime? startDate,
     DateTime? endDate,
     List<VoteOption>? options,
@@ -57,6 +60,7 @@ class Voting {
       id: id ?? this.id,
       type: type ?? this.type,
       relatedId: relatedId ?? this.relatedId,
+      creatorName: creatorName ?? this.creatorName,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       options: options ?? this.options,

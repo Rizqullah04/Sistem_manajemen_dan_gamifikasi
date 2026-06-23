@@ -14,6 +14,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/p
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/widgets/dashboard_home_action.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/pages/live_voting_preview_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/pages/voting_log_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/providers/voting_controller.dart';
 
 class VotingPage extends ConsumerStatefulWidget {
@@ -25,6 +26,9 @@ class VotingPage extends ConsumerStatefulWidget {
 
 class _VotingPageState extends ConsumerState<VotingPage> {
   static const int _minKetuaPoints = 100;
+  final Map<String, DateTime> _endDateOverrides = {};
+  final Set<String> _stoppedVotingIds = {};
+  final Set<String> _deletedVotingIds = {};
 
   @override
   void initState() {
@@ -45,6 +49,17 @@ class _VotingPageState extends ConsumerState<VotingPage> {
         title: const Text('Voting Digital'),
         actions: [
           const DashboardHomeAction(),
+          IconButton(
+            tooltip: 'Log riwayat voting',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const VotingLogPage(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.history_rounded),
+          ),
           IconButton(
             onPressed: () => ref.read(votingControllerProvider.notifier).load(),
             icon: const Icon(Icons.refresh_rounded),
@@ -80,7 +95,11 @@ class _VotingPageState extends ConsumerState<VotingPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (state.items.isEmpty) {
+            final visibleItems = state.items
+                .where((item) => !_deletedVotingIds.contains(item.id))
+                .toList(growable: false);
+
+            if (visibleItems.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
@@ -97,19 +116,128 @@ class _VotingPageState extends ConsumerState<VotingPage> {
             return ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount: state.items.length,
+              itemCount: visibleItems.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final voting = state.items[index];
+                final originalVoting = visibleItems[index];
+                final voting = originalVoting.copyWith(
+                  endDate: _stoppedVotingIds.contains(originalVoting.id)
+                      ? DateTime.now().subtract(const Duration(seconds: 1))
+                      : _endDateOverrides[originalVoting.id],
+                );
+                final isCreator =
+                    user?.role == UserRole.adminFaculty ||
+                    user?.role == UserRole.ormawaAccount;
                 return _VotingCard(
                   voting: voting,
-                  canManagePeriod: user?.role == UserRole.adminFaculty,
+                  isCreator: isCreator,
+                  isStopped: _stoppedVotingIds.contains(originalVoting.id),
+                  onExtendPeriod: () => _extendVotingPeriod(voting),
+                  onStopVoting: () => _confirmStopVoting(voting),
+                  onDeleteVoting: () => _confirmDeleteVoting(voting),
                 );
               },
             );
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _extendVotingPeriod(Voting voting) async {
+    final now = DateTime.now();
+    final initialDate = voting.endDate.isAfter(now)
+        ? voting.endDate
+        : now.add(const Duration(days: 1));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+
+    setState(() {
+      _endDateOverrides[voting.id] = picked;
+      _stoppedVotingIds.remove(voting.id);
+    });
+
+    try {
+      await ref
+          .read(votingControllerProvider.notifier)
+          .updatePeriod(
+            votingId: voting.id,
+            startDate: voting.startDate,
+            endDate: picked,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_errorMessage(error))),
+      );
+    }
+  }
+
+  Future<void> _confirmStopVoting(Voting voting) async {
+    final confirmed = await _showVotingActionDialog(
+      title: 'Hentikan Voting?',
+      message:
+          'Voting ini akan ditandai selesai dan anggota tidak dapat memilih lagi.',
+      confirmLabel: 'Hentikan',
+      icon: Icons.block_rounded,
+    );
+    if (confirmed != true) return;
+    setState(() {
+      _stoppedVotingIds.add(voting.id);
+      _endDateOverrides[voting.id] = DateTime.now().subtract(
+        const Duration(seconds: 1),
+      );
+    });
+  }
+
+  Future<void> _confirmDeleteVoting(Voting voting) async {
+    final confirmed = await _showVotingActionDialog(
+      title: 'Hapus Voting?',
+      message:
+          'Kartu voting akan dihapus dari daftar pada sesi ini. Tindakan ini tidak dapat dibatalkan dari tampilan.',
+      confirmLabel: 'Hapus',
+      icon: Icons.delete_outline_rounded,
+      isDestructive: true,
+    );
+    if (confirmed != true) return;
+    setState(() => _deletedVotingIds.add(voting.id));
+  }
+
+  Future<bool?> _showVotingActionDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required IconData icon,
+    bool isDestructive = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final color = isDestructive
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.primary;
+        return AlertDialog(
+          icon: Icon(icon, color: color),
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: color),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -746,11 +874,24 @@ class _OrmawaCreatorBadge extends StatelessWidget {
   }
 }
 
+enum _VotingCardMenuAction { extend, stop, delete }
+
 class _VotingCard extends ConsumerWidget {
-  const _VotingCard({required this.voting, required this.canManagePeriod});
+  const _VotingCard({
+    required this.voting,
+    required this.isCreator,
+    required this.isStopped,
+    required this.onExtendPeriod,
+    required this.onStopVoting,
+    required this.onDeleteVoting,
+  });
 
   final Voting voting;
-  final bool canManagePeriod;
+  final bool isCreator;
+  final bool isStopped;
+  final VoidCallback onExtendPeriod;
+  final VoidCallback onStopVoting;
+  final VoidCallback onDeleteVoting;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -761,93 +902,215 @@ class _VotingCard extends ConsumerWidget {
     );
     final hasVoted = user != null && voting.voterIds.contains(user.id);
     final canUseVote = user?.role == UserRole.memberAccount;
-    final creatorOrmawaName = _creatorOrmawaNameFor(voting);
+    final creatorOrmawaName = voting.creatorName;
     final periodText =
         '${DateFormat('dd MMM').format(voting.startDate)} - ${DateFormat('dd MMM yyyy').format(voting.endDate)}';
+    final isFinished = isStopped || !voting.isActive;
+    void openLivePreview() {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => LiveVotingPreviewPage(
+            data: _buildLivePreviewData(
+              voting: voting,
+              creatorOrmawaName: creatorOrmawaName,
+            ),
+            onCandidateVote: (_) => Navigator.of(context).pop(),
+            onActivityVote: (_) => Navigator.of(context).pop(),
+          ),
+        ),
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _OrmawaCreatorBadge(name: creatorOrmawaName),
-            const SizedBox(height: 10),
-            Text(
-              voting.type == VotingType.kegiatan
-                  ? 'Voting Penilaian Kegiatan'
-                  : 'Voting Ketua Ormawa',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
-            Text('Periode: $periodText'),
-            const SizedBox(height: 10),
-            ...voting.options.map((option) {
-              final ratio = totalVotes == 0 ? 0.0 : option.votes / totalVotes;
-              return _VoteOptionTile(
-                option: option,
-                ratio: ratio,
-                canTap: voting.isActive && !hasVoted && user != null,
-                canVote: canUseVote,
-                ormawaName: creatorOrmawaName,
-                onOpenPreview: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => LiveVotingPreviewPage(
-                        data: _buildLivePreviewData(
-                          voting: voting,
-                          creatorOrmawaName: creatorOrmawaName,
+      child: InkWell(
+        onTap: openLivePreview,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _OrmawaCreatorBadge(name: creatorOrmawaName),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          voting.type == VotingType.kegiatan
+                              ? 'Voting Penilaian Kegiatan'
+                              : 'Voting Ketua Ormawa',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        onCandidateVote: (_) => Navigator.of(context).pop(),
-                        onActivityVote: (_) => Navigator.of(context).pop(),
-                      ),
+                        const SizedBox(height: 4),
+                        Text('Periode: $periodText'),
+                      ],
                     ),
-                  );
-                },
-                onVote: () async {
-                  try {
-                    await ref
-                        .read(votingControllerProvider.notifier)
-                        .castVote(votingId: voting.id, optionId: option.id);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Vote berhasil disimpan.')),
-                    );
-                  } catch (error) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(_errorMessage(error))),
-                    );
-                  }
-                },
-              );
-            }),
-            if (user != null && !canUseVote)
-              Text(
-                'Voting hanya tersedia untuk akun anggota resmi $creatorOrmawaName.',
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const _LivePreviewBadge(),
+                          if (isCreator) ...[
+                            const SizedBox(width: 4),
+                            _VotingCardMenu(
+                              onSelected: (action) {
+                                switch (action) {
+                                  case _VotingCardMenuAction.extend:
+                                    onExtendPeriod();
+                                    break;
+                                  case _VotingCardMenuAction.stop:
+                                    onStopVoting();
+                                    break;
+                                  case _VotingCardMenuAction.delete:
+                                    onDeleteVoting();
+                                    break;
+                                }
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (isFinished) ...[
+                        const SizedBox(height: 6),
+                        const _FinishedVotingBadge(),
+                      ],
+                    ],
+                  ),
+                ],
               ),
-            if (hasVoted) const Text('Anda sudah menggunakan hak suara.'),
-            if (canManagePeriod)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final now = DateTime.now();
-                    await ref
-                        .read(votingControllerProvider.notifier)
-                        .updatePeriod(
-                          votingId: voting.id,
-                          startDate: now,
-                          endDate: now.add(const Duration(days: 14)),
-                        );
+              const SizedBox(height: 10),
+              ...voting.options.map((option) {
+                final ratio = totalVotes == 0 ? 0.0 : option.votes / totalVotes;
+                return _VoteOptionTile(
+                  option: option,
+                  ratio: ratio,
+                  canTap: voting.isActive && !isStopped && !hasVoted && user != null,
+                  canVote: canUseVote,
+                  ormawaName: creatorOrmawaName,
+                  onVote: () async {
+                    try {
+                      await ref
+                          .read(votingControllerProvider.notifier)
+                          .castVote(votingId: voting.id, optionId: option.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vote berhasil disimpan.'),
+                        ),
+                      );
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(_errorMessage(error))),
+                      );
+                    }
                   },
-                  icon: const Icon(Icons.schedule),
-                  label: const Text('Atur Periode'),
+                );
+              }),
+              if (user != null && !canUseVote)
+                Text(
+                  'Voting hanya tersedia untuk akun anggota resmi $creatorOrmawaName.',
                 ),
-              ),
-          ],
+              if (hasVoted) const Text('Anda sudah menggunakan hak suara.'),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _VotingCardMenu extends StatelessWidget {
+  const _VotingCardMenu({required this.onSelected});
+
+  final ValueChanged<_VotingCardMenuAction> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_VotingCardMenuAction>(
+      tooltip: 'Kelola voting',
+      icon: const Icon(Icons.more_vert),
+      onSelected: onSelected,
+      itemBuilder: (context) {
+        return [
+          const PopupMenuItem(
+            value: _VotingCardMenuAction.extend,
+            child: _VotingMenuItem(
+              icon: Icons.access_time_rounded,
+              label: 'Perpanjang Waktu',
+            ),
+          ),
+          const PopupMenuItem(
+            value: _VotingCardMenuAction.stop,
+            child: _VotingMenuItem(
+              icon: Icons.block_rounded,
+              label: 'Hentikan Voting',
+            ),
+          ),
+          PopupMenuItem(
+            value: _VotingCardMenuAction.delete,
+            child: _VotingMenuItem(
+              icon: Icons.delete_outline_rounded,
+              label: 'Hapus Voting',
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ];
+      },
+    );
+  }
+}
+
+class _VotingMenuItem extends StatelessWidget {
+  const _VotingMenuItem({
+    required this.icon,
+    required this.label,
+    this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = color ?? Theme.of(context).colorScheme.onSurface;
+    return Row(
+      children: [
+        Icon(icon, color: effectiveColor),
+        const SizedBox(width: 12),
+        Text(label, style: TextStyle(color: effectiveColor)),
+      ],
+    );
+  }
+}
+
+class _FinishedVotingBadge extends StatelessWidget {
+  const _FinishedVotingBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'Selesai',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+              fontWeight: FontWeight.w900,
+            ),
       ),
     );
   }
@@ -860,7 +1123,6 @@ class _VoteOptionTile extends StatelessWidget {
     required this.canTap,
     required this.canVote,
     required this.ormawaName,
-    required this.onOpenPreview,
     required this.onVote,
   });
 
@@ -869,7 +1131,6 @@ class _VoteOptionTile extends StatelessWidget {
   final bool canTap;
   final bool canVote;
   final String ormawaName;
-  final VoidCallback onOpenPreview;
   final Future<void> Function() onVote;
 
   @override
@@ -878,136 +1139,101 @@ class _VoteOptionTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onOpenPreview,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest
+              .withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(18),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant
-                    .withValues(alpha: 0.5),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(
+                  alpha: 0.5,
+                ),
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: color.withValues(alpha: 0.18),
+              child: Text(
+                _optionInitials(option.title),
+                style: TextStyle(color: color, fontWeight: FontWeight.w800),
               ),
             ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: color.withValues(alpha: 0.18),
-                  child: Text(
-                    _optionInitials(option.title),
-                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              option.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w800),
+                      Expanded(
+                        child: Text(
+                          option.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${option.votes} suara',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${option.votes} suara',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          _LiveDetailBadge(color: color),
-                          Text(
-                            'Tap untuk melihat preview live',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _AnimatedVoteBar(value: ratio, color: color),
                     ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 6),
-                    _VoteActionButton(
-                      canTap: canTap,
-                      canVote: canVote,
-                      ormawaName: ormawaName,
-                      onVote: onVote,
-                    ),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  _AnimatedVoteBar(value: ratio, color: color),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            _VoteActionButton(
+              canTap: canTap,
+              canVote: canVote,
+              ormawaName: ormawaName,
+              onVote: onVote,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _LiveDetailBadge extends StatelessWidget {
-  const _LiveDetailBadge({required this.color});
-
-  final Color color;
+class _LivePreviewBadge extends StatelessWidget {
+  const _LivePreviewBadge();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.28),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.sensors_rounded, size: 13, color: color),
+          Icon(
+            Icons.analytics_outlined,
+            size: 15,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           const SizedBox(width: 4),
           Text(
-            'Lihat Detail/Live',
+            'Live Preview',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
+                  color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w800,
                 ),
           ),
@@ -1231,17 +1457,6 @@ Color _optionColor(String seed) {
     Color(0xFFEF4444),
   ];
   return colors[seed.hashCode.abs() % colors.length];
-}
-
-String _creatorOrmawaNameFor(Voting voting) {
-  const names = [
-    'BEM Fakultas Teknik',
-    'Himpunan Mahasiswa Teknologi Informasi',
-    'Himpunan Mahasiswa Sistem Informasi',
-    'Unit Kegiatan Mahasiswa Teknologi',
-  ];
-  final seed = '${voting.relatedId}-${voting.id}';
-  return names[seed.hashCode.abs() % names.length];
 }
 
 VotingModel _buildLivePreviewData({

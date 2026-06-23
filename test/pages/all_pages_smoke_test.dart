@@ -78,6 +78,7 @@ class _FakeVotingRepository implements VotingRepository {
       id: 'v1',
       type: VotingType.kegiatan,
       relatedId: 'activity-1',
+      creatorName: 'BEM Fakultas Teknik',
       startDate: DateTime(2026),
       endDate: DateTime(2027),
       options: const [
@@ -103,6 +104,7 @@ class _FakeVotingRepository implements VotingRepository {
       id: 'v${_items.length + 1}',
       type: type,
       relatedId: title,
+      creatorName: 'BEM Fakultas Teknik',
       startDate: startDate,
       endDate: endDate,
       options: [

@@ -18,7 +18,7 @@ class VotingController extends Controller
     {
         return $this->successResponse(
             'Data voting berhasil diambil',
-            VotingResource::collection(Voting::with('voteDetails.user')->latest()->get())
+            VotingResource::collection(Voting::with(['ormawa', 'voteDetails.user'])->latest()->get())
         );
     }
 
@@ -57,14 +57,14 @@ class VotingController extends Controller
         $data['poll_options'] = array_values(array_unique(array_map('trim', $data['poll_options'])));
         $data['status'] ??= 'aktif';
 
-        $voting = Voting::create($data)->load('voteDetails.user');
+        $voting = Voting::create($data)->load(['ormawa', 'voteDetails.user']);
 
         return $this->successResponse('Voting berhasil dibuat', new VotingResource($voting), 201);
     }
 
     public function show(Voting $voting): JsonResponse
     {
-        return $this->successResponse('Detail voting berhasil diambil', new VotingResource($voting->load('voteDetails.user')));
+        return $this->successResponse('Detail voting berhasil diambil', new VotingResource($voting->load(['ormawa', 'voteDetails.user'])));
     }
 
     public function update(Request $request, Voting $voting): JsonResponse
@@ -86,7 +86,7 @@ class VotingController extends Controller
 
         $voting->update($data);
 
-        return $this->successResponse('Voting berhasil diperbarui', new VotingResource($voting->fresh('voteDetails.user')));
+        return $this->successResponse('Voting berhasil diperbarui', new VotingResource($voting->fresh(['ormawa', 'voteDetails.user'])));
     }
 
     public function destroy(Voting $voting): JsonResponse

@@ -13,6 +13,8 @@ class VotingResource extends JsonResource
             'id_voting' => $this->id_voting,
             'id_kegiatan' => $this->id_kegiatan,
             'id_ormawa' => $this->id_ormawa,
+            'creator_name' => $this->ormawa?->nama_ormawa ?? 'Ormawa Pembuat',
+            'ormawa' => $this->whenLoaded('ormawa', fn () => new OrmawaResource($this->ormawa)),
             'judul_voting' => $this->judul_voting,
             'tanggal_mulai' => $this->tanggal_mulai?->format('Y-m-d'),
             'tanggal_selesai' => $this->tanggal_selesai?->format('Y-m-d'),

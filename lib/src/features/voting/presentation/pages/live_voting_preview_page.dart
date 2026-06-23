@@ -486,72 +486,142 @@ class _ActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ratio = (activity.voteCount / maxVotes).clamp(0.0, 1.0).toDouble();
 
-    return _OptionShell(
-      child: Row(
-        children: [
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              color: const Color(0xFF172554),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
-              ),
-            ),
-            child: Icon(activity.icon, color: const Color(0xFF38BDF8), size: 32),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activity.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  activity.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 8),
-                Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 460;
+
+        return _OptionShell(
+          child: isCompact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.calendar_month_rounded,
-                      color: Color(0xFFC4B5FD),
-                      size: 16,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ActivityIcon(icon: activity.icon),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: _ActivityInfo(
+                            activity: activity,
+                            ratio: ratio,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatDate(activity.estimatedDate),
-                      style: const TextStyle(
-                        color: Color(0xFFC4B5FD),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => onVote?.call(activity),
+                        style: FilledButton.styleFrom(
+                          shape: const StadiumBorder(),
+                        ),
+                        child: const Text('Pilih Kegiatan'),
                       ),
                     ),
                   ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ActivityIcon(icon: activity.icon),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _ActivityInfo(activity: activity, ratio: ratio),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton(
+                      onPressed: () => onVote?.call(activity),
+                      style: FilledButton.styleFrom(
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Pilih Kegiatan'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _MiniProgress(value: ratio),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          FilledButton(
-            onPressed: () => onVote?.call(activity),
-            style: FilledButton.styleFrom(shape: const StadiumBorder()),
-            child: const Text('Pilih Kegiatan'),
-          ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _ActivityIcon extends StatelessWidget {
+  const _ActivityIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFF172554),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
+        ),
       ),
+      child: Icon(icon, color: const Color(0xFF38BDF8), size: 30),
+    );
+  }
+}
+
+class _ActivityInfo extends StatelessWidget {
+  const _ActivityInfo({required this.activity, required this.ratio});
+
+  final ActivityVotingOption activity;
+  final double ratio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          activity.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          activity.description,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(
+              Icons.calendar_month_rounded,
+              color: Color(0xFFC4B5FD),
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _formatDate(activity.estimatedDate),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFC4B5FD),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _MiniProgress(value: ratio),
+      ],
     );
   }
 

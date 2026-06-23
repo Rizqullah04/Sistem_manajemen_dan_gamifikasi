@@ -125,6 +125,7 @@ class VotingRepositoryImpl implements VotingRepository {
           ? VotingType.ketua
           : VotingType.kegiatan,
       relatedId: json['id_kegiatan']?.toString() ?? '',
+      creatorName: _creatorNameFrom(json),
       startDate:
           DateTime.tryParse(json['tanggal_mulai']?.toString() ?? '') ??
           DateTime.now(),
@@ -134,6 +135,49 @@ class VotingRepositoryImpl implements VotingRepository {
       options: options,
       voterIds: voters,
     );
+  }
+
+  String _creatorNameFrom(Map<String, dynamic> json) {
+    final candidates = [
+      json['creator_name'],
+      json['nama_ormawa'],
+      json['ormawa_name'],
+      if (json['ormawa'] is Map) (json['ormawa'] as Map)['nama_ormawa'],
+      if (json['ormawa'] is Map) (json['ormawa'] as Map)['name'],
+      json['created_by_name'],
+      json['sender_name'],
+      json['email'],
+      json['created_by_email'],
+    ];
+
+    for (final candidate in candidates) {
+      final value = candidate?.toString().trim();
+      if (value == null || value.isEmpty) continue;
+      return _displayNameFromAccount(value);
+    }
+
+    final ormawaId = json['id_ormawa']?.toString().trim();
+    if (ormawaId != null && ormawaId.isNotEmpty) {
+      return 'Ormawa #$ormawaId';
+    }
+    return 'Ormawa Pembuat';
+  }
+
+  String _displayNameFromAccount(String value) {
+    if (!value.contains('@')) return value;
+    final localPart = value.split('@').first;
+    final words = localPart
+        .split(RegExp(r'[._-]+'))
+        .where((part) => part.trim().isNotEmpty)
+        .map(_capitalizeWord)
+        .toList();
+    if (words.isEmpty) return 'Ormawa Pembuat';
+    return words.join(' ');
+  }
+
+  String _capitalizeWord(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1).toLowerCase();
   }
 
   String _formatDate(DateTime date) =>
