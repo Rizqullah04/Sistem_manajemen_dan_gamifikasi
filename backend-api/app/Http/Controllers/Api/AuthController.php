@@ -58,7 +58,7 @@ class AuthController extends Controller
         $token = $user->createToken('mobile-token')->plainTextToken;
 
         return $this->successResponse('Login berhasil', [
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->load(['ormawa', 'userBadges.badge'])),
             'token' => $token,
             'token_type' => 'Bearer',
         ]);
@@ -66,7 +66,7 @@ class AuthController extends Controller
 
     public function profile(Request $request): JsonResponse
     {
-        return $this->successResponse('Profile user berhasil diambil', new UserResource($request->user()));
+        return $this->successResponse('Profile user berhasil diambil', new UserResource($request->user()->load(['ormawa', 'userBadges.badge'])));
     }
 
     public function logout(Request $request): JsonResponse

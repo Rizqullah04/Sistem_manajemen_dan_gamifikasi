@@ -85,8 +85,9 @@ class UserController extends Controller
     public function recalculatePoin(User $user, PoinService $poinService): JsonResponse
     {
         $user->forceFill(['poin' => $poinService->hitungPoinUser($user)])->save();
+        $poinService->evaluasiBadgeUser($user);
         $user->ormawa?->recalculateTotalPoin();
 
-        return $this->successResponse('Poin user berhasil dihitung ulang', new UserResource($user->fresh('ormawa')));
+        return $this->successResponse('Poin user berhasil dihitung ulang', new UserResource($user->fresh(['ormawa', 'userBadges.badge'])));
     }
 }

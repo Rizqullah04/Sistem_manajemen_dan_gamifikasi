@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Badge;
 use App\Models\Ormawa;
 use App\Models\Period;
 use App\Models\PoinLog;
 use App\Models\User;
+use App\Models\UserBadge;
 
 class PoinService
 {
@@ -25,6 +27,7 @@ class PoinService
         ]);
 
         $user->forceFill(['poin' => $this->hitungPoinUser($user)])->save();
+        $this->evaluasiBadgeUser($user);
         $user->ormawa?->recalculateTotalPoin();
 
         return $log;
@@ -60,6 +63,37 @@ class PoinService
     public function hitungPoinOrmawa(Ormawa $ormawa): int
     {
         return $ormawa->calculateTotalPoinFromLogs();
+    }
+
+    public function evaluasiBadgeUser(User $user): int
+    {
+        $period = $this->activePeriod();
+        $user->refresh();
+        $totalPoin = (int) $user->poin;
+        $badges = Badge::where('minimal_poin', '<=', $totalPoin)
+            ->orderBy('minimal_poin')
+            ->get();
+
+        $awardedCount = 0;
+        foreach ($badges as $badge) {
+            $award = UserBadge::firstOrCreate(
+                [
+                    'id_user' => $user->id_user,
+                    'id_badge' => $badge->id,
+                ],
+                [
+                    'id_period' => $period->id_period,
+                    'awarded_at' => now(),
+                    'notes' => 'Disematkan otomatis setelah mencapai '.$badge->minimal_poin.' poin.',
+                ]
+            );
+
+            if ($award->wasRecentlyCreated) {
+                $awardedCount++;
+            }
+        }
+
+        return $awardedCount;
     }
 
     public function activePeriod(): Period

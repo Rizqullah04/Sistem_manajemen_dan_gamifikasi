@@ -9,6 +9,7 @@ class User {
     required this.points,
     required this.level,
     this.ormawaId,
+    this.badges = const [],
   });
 
   final String id;
@@ -18,6 +19,7 @@ class User {
   final int points;
   final int level;
   final String? ormawaId;
+  final List<String> badges;
 
   User copyWith({
     String? id,
@@ -27,6 +29,7 @@ class User {
     int? points,
     int? level,
     String? ormawaId,
+    List<String>? badges,
   }) {
     return User(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class User {
       points: points ?? this.points,
       level: level ?? this.level,
       ormawaId: ormawaId ?? this.ormawaId,
+      badges: badges ?? this.badges,
     );
   }
 }

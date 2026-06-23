@@ -147,24 +147,11 @@ class AdminSidebar extends ConsumerWidget {
                   icon: Icons.apartment_rounded,
                   label: 'Data Ormawa',
                   onTap: () {
-                    if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
-                      Navigator.pop(context);
-                    }
-                    context.push('/admin/ormawas');
+                    _closeDrawerAndPush(context, '/admin/ormawas');
                   },
                 ),
               if (user?.role == UserRole.adminFaculty)
-                _buildMenuItem(
-                  context,
-                  icon: Icons.emoji_events_outlined,
-                  label: 'Ormawa Awards',
-                  onTap: () {
-                    if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
-                      Navigator.pop(context);
-                    }
-                    context.push('/admin/ormawa-awards');
-                  },
-                ),
+                _buildGamificationMenu(context),
               _buildMenuItem(
                 context,
                 icon: Icons.settings_outlined,
@@ -196,17 +183,6 @@ class AdminSidebar extends ConsumerWidget {
                     Navigator.pop(context);
                   }
                   context.push('/leaderboard');
-                },
-              ),
-              _buildMenuItem(
-                context,
-                icon: Icons.emoji_events_outlined,
-                label: 'Achievement',
-                onTap: () {
-                  if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
-                    Navigator.pop(context);
-                  }
-                  context.push('/achievement');
                 },
               ),
               _buildMenuItem(
@@ -243,6 +219,36 @@ class AdminSidebar extends ConsumerWidget {
     );
   }
 
+  Widget _buildGamificationMenu(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        leading: const Icon(Icons.workspace_premium_outlined, size: 20),
+        title: Text(
+          'Manajemen Gamifikasi',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        children: [
+          _buildSubMenuItem(
+            context,
+            icon: Icons.military_tech_outlined,
+            label: 'Pengaturan Lencana (Badges)',
+            onTap: () =>
+                _closeDrawerAndPush(context, '/admin/gamification/badges'),
+          ),
+          _buildSubMenuItem(
+            context,
+            icon: Icons.emoji_events_outlined,
+            label: 'Penilaian Ormawa Awards',
+            onTap: () => _closeDrawerAndPush(context, '/admin/ormawa-awards'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMenuItem(
     BuildContext context, {
     required IconData icon,
@@ -258,6 +264,28 @@ class AdminSidebar extends ConsumerWidget {
         onTap: onTap,
       ),
     );
+  }
+
+  Widget _buildSubMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.only(left: 8, right: 4),
+      leading: Icon(icon, size: 18),
+      title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+      onTap: onTap,
+    );
+  }
+
+  void _closeDrawerAndPush(BuildContext context, String route) {
+    if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+      Navigator.pop(context);
+    }
+    context.push(route);
   }
 
   String _roleLabel(UserRole? role) {

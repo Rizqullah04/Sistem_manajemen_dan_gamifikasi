@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/providers/activity_controller.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
@@ -30,18 +31,17 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
     final user = ref.watch(authControllerProvider).user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Feed Kegiatan'),
-      ),
+      appBar: AppBar(title: const Text('Feed Kegiatan')),
       floatingActionButton: user?.role == UserRole.ormawaAccount
           ? FloatingActionButton.extended(
-              onPressed: () => _showCreateDialog(context),
+              onPressed: () => _showActivityFormDialog(context),
               label: const Text('Input Kegiatan'),
               icon: const Icon(Icons.add),
             )
           : null,
       body: RefreshIndicator(
-        onRefresh: () => ref.read(activityControllerProvider.notifier).loadInitial(),
+        onRefresh: () =>
+            ref.read(activityControllerProvider.notifier).loadInitial(),
         child: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
             if (notification.metrics.pixels >=
@@ -55,116 +55,206 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
           child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : state.items.isEmpty
-                  ? const EmptyState(
-                      title: 'Belum ada kegiatan',
-                      subtitle: 'Tambahkan kegiatan pertama Anda.',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      itemCount: 1 + state.items.length + (state.isLoadingMore ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return _ActivityFeedHeader(userName: user?.name);
-                        }
-                        if (index > state.items.length) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        final activity = state.items[index - 1];
-                        return _ActivityCard(activity: activity, userRole: user?.role);
-                      },
-                    ),
+              ? const EmptyState(
+                  title: 'Belum ada kegiatan',
+                  subtitle: 'Tambahkan kegiatan pertama Anda.',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  itemCount:
+                      1 + state.items.length + (state.isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _ActivityFeedHeader(userName: user?.name);
+                    }
+                    if (index > state.items.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final activity = state.items[index - 1];
+                    return _ActivityCard(
+                      activity: activity,
+                      userRole: user?.role,
+                      onEdit: () =>
+                          _showActivityFormDialog(context, activity: activity),
+                    );
+                  },
+                ),
         ),
       ),
     );
   }
 
-  Future<void> _showCreateDialog(BuildContext context) async {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    final categoryController = TextEditingController();
-    final docsController = TextEditingController();
-    DateTime selectedDate = DateTime.now();
+  Future<void> _showActivityFormDialog(
+    BuildContext context, {
+    Activity? activity,
+  }) async {
+    final isEditing = activity != null;
+    final titleController = TextEditingController(text: activity?.title);
+    final descController = TextEditingController(text: activity?.description);
+    final categoryController = TextEditingController(
+      text: activity?.category ?? 'Kegiatan',
+    );
+    final docsController = TextEditingController(text: activity?.documentation);
+    DateTime selectedDate = activity?.date ?? DateTime.now();
     final formKey = GlobalKey<FormState>();
+    var isSubmitting = false;
 
     await showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Input Kegiatan'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Judul'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Wajib diisi' : null,
-                  ),
-                  TextFormField(
-                    controller: descController,
-                    decoration: const InputDecoration(labelText: 'Deskripsi'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Wajib diisi' : null,
-                  ),
-                  TextFormField(
-                    controller: categoryController,
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Wajib diisi' : null,
-                  ),
-                  TextFormField(
-                    controller: docsController,
-                    decoration: const InputDecoration(labelText: 'Dokumentasi URL'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Wajib diisi' : null,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEditing ? 'Edit Kegiatan' : 'Input Kegiatan'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Tanggal:'),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            firstDate: DateTime(2024),
-                            lastDate: DateTime(2035),
-                            initialDate: selectedDate,
-                          );
-                          if (picked != null) {
-                            selectedDate = picked;
-                          }
-                        },
-                        child: const Text('Pilih'),
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(labelText: 'Judul'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Wajib diisi'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: descController,
+                        decoration: const InputDecoration(
+                          labelText: 'Deskripsi',
+                        ),
+                        maxLines: 3,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Wajib diisi'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: categoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Kategori',
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Wajib diisi'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: docsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Dokumentasi URL',
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Tanggal: ${DateFormat('dd MMM yyyy').format(selectedDate)}',
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      firstDate: DateTime(2024),
+                                      lastDate: DateTime(2035),
+                                      initialDate: selectedDate,
+                                    );
+                                    if (picked != null) {
+                                      setDialogState(
+                                        () => selectedDate = picked,
+                                      );
+                                    }
+                                  },
+                            child: const Text('Pilih'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                await ref.read(activityControllerProvider.notifier).create(
-                      title: titleController.text.trim(),
-                      description: descController.text.trim(),
-                      date: selectedDate,
-                      documentation: docsController.text.trim(),
-                      category: categoryController.text.trim(),
-                    );
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final notifier = ref.read(
+                              activityControllerProvider.notifier,
+                            );
+                            if (isEditing) {
+                              await notifier.update(
+                                activity: activity,
+                                title: titleController.text.trim(),
+                                description: descController.text.trim(),
+                                date: selectedDate,
+                                documentation: docsController.text.trim(),
+                                category: categoryController.text.trim(),
+                              );
+                            } else {
+                              await notifier.create(
+                                title: titleController.text.trim(),
+                                description: descController.text.trim(),
+                                date: selectedDate,
+                                documentation: docsController.text.trim(),
+                                category: categoryController.text.trim(),
+                              );
+                            }
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isEditing
+                                      ? 'Kegiatan berhasil diperbarui.'
+                                      : 'Kegiatan berhasil diajukan dan menunggu verifikasi.',
+                                ),
+                              ),
+                            );
+                          } on AppException catch (e) {
+                            if (!context.mounted) return;
+                            setDialogState(() => isSubmitting = false);
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(e.message)));
+                          } catch (_) {
+                            if (!context.mounted) return;
+                            setDialogState(() => isSubmitting = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Kegiatan gagal disimpan.'),
+                              ),
+                            );
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Simpan'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -213,10 +303,15 @@ class _ActivityFeedHeader extends StatelessWidget {
 }
 
 class _ActivityCard extends ConsumerWidget {
-  const _ActivityCard({required this.activity, required this.userRole});
+  const _ActivityCard({
+    required this.activity,
+    required this.userRole,
+    required this.onEdit,
+  });
 
   final Activity activity;
   final UserRole? userRole;
+  final VoidCallback onEdit;
 
   Color _statusColor(ActivityStatus status, BuildContext context) {
     switch (status) {
@@ -273,11 +368,15 @@ class _ActivityCard extends ConsumerWidget {
               children: [
                 Chip(
                   label: Text(activity.category),
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.12),
                 ),
                 Chip(
                   label: Text(DateFormat('dd MMM yyyy').format(activity.date)),
-                  backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.secondary.withValues(alpha: 0.12),
                 ),
                 Chip(
                   avatar: const Icon(Icons.star_rate_rounded, size: 18),
@@ -294,24 +393,27 @@ class _ActivityCard extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 16),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.link_outlined),
-                    label: const Text('Lihat Dokumentasi'),
-                  ),
+                TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.link_outlined),
+                  label: const Text('Lihat Dokumentasi'),
                 ),
-                const SizedBox(width: 12),
-                if (userRole == UserRole.ormawaAccount)
+                if (userRole == UserRole.ormawaAccount) ...[
                   OutlinedButton.icon(
-                    onPressed: () {
-                      ref.read(activityControllerProvider.notifier).delete(activity.id);
-                    },
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _confirmDelete(context, ref),
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Hapus'),
                   ),
+                ],
               ],
             ),
             ExpansionTile(
@@ -327,7 +429,9 @@ class _ActivityCard extends ConsumerWidget {
                     if (userRole == UserRole.adminFaculty) ...[
                       FilledButton.icon(
                         onPressed: () async {
-                          await ref.read(activityControllerProvider.notifier).verify(
+                          await ref
+                              .read(activityControllerProvider.notifier)
+                              .verify(
                                 activityId: activity.id,
                                 status: ActivityStatus.approved,
                                 note: 'Kegiatan diverifikasi dan disetujui.',
@@ -338,7 +442,9 @@ class _ActivityCard extends ConsumerWidget {
                       ),
                       OutlinedButton.icon(
                         onPressed: () async {
-                          await ref.read(activityControllerProvider.notifier).verify(
+                          await ref
+                              .read(activityControllerProvider.notifier)
+                              .verify(
                                 activityId: activity.id,
                                 status: ActivityStatus.rejected,
                                 note: 'Perlu perbaikan data administrasi.',
@@ -356,5 +462,46 @@ class _ActivityCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Kegiatan'),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus kegiatan "${activity.title}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+    try {
+      await ref.read(activityControllerProvider.notifier).delete(activity.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kegiatan berhasil dihapus.')),
+      );
+    } on AppException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Kegiatan gagal dihapus.')));
+    }
   }
 }

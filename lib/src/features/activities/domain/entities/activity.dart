@@ -4,11 +4,11 @@ extension ActivityStatusX on ActivityStatus {
   String get label {
     switch (this) {
       case ActivityStatus.pending:
-        return 'Pending';
+        return 'Menunggu Verifikasi';
       case ActivityStatus.approved:
-        return 'Approved';
+        return 'Disetujui';
       case ActivityStatus.rejected:
-        return 'Rejected';
+        return 'Ditolak';
     }
   }
 }

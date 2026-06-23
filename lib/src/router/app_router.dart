@@ -38,6 +38,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AdminOrmawaAwardsPage(),
       ),
       GoRoute(
+        path: '/admin/gamification/badges',
+        builder: (context, state) => const AchievementPage(),
+      ),
+      GoRoute(
         path: '/ormawa',
         builder: (context, state) => const OrmawaDashboardPage(),
       ),

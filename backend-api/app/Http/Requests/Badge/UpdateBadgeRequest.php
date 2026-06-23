@@ -12,7 +12,7 @@ class UpdateBadgeRequest extends ApiFormRequest
             'nama_badge' => ['sometimes', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string'],
             'minimal_poin' => ['sometimes', 'integer', 'min:0'],
-            'icon' => ['nullable', 'string', 'max:255'],
+            'icon' => ['sometimes', 'image', 'mimes:png', 'max:2048', 'dimensions:ratio=1/1'],
         ];
     }
 }

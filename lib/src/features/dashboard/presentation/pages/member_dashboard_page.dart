@@ -269,7 +269,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: _badges
+                  children: _displayBadges(user)
                       .map((badge) => BadgeWidget(label: badge))
                       .toList(),
                 ),
@@ -774,7 +774,11 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 const SizedBox(height: 28),
                 _buildAnimatedSection(
                   delay: 3,
-                  child: _buildBadgesSection(context, isCompact: isCompact),
+                  child: _buildBadgesSection(
+                    context,
+                    user: user,
+                    isCompact: isCompact,
+                  ),
                 ),
               ],
             ),
@@ -1331,35 +1335,39 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     );
   }
 
-  Widget _buildBadgesSection(BuildContext context, {required bool isCompact}) {
-    final badges = [
-      _ProfileBadgeData(
-        label: 'Top Leader',
-        icon: Icons.emoji_events_rounded,
-        color: const Color(0xFFEAB308),
-      ),
-      _ProfileBadgeData(
-        label: 'Team Player',
-        icon: Icons.groups_rounded,
-        color: const Color(0xFF3B82F6),
-      ),
-      _ProfileBadgeData(
-        label: 'Early Bird',
-        icon: Icons.bolt_rounded,
-        color: const Color(0xFFA855F7),
-      ),
-      _ProfileBadgeData(
-        label: 'Locked',
-        icon: Icons.lock_rounded,
-        color: const Color(0xFF6B7280),
-        isLocked: true,
-      ),
-      _ProfileBadgeData(
-        label: 'Organizer',
-        icon: Icons.verified_rounded,
-        color: const Color(0xFF14B8A6),
-      ),
+  List<String> _displayBadges(User user) {
+    return user.badges.isEmpty ? _badges : user.badges;
+  }
+
+  Widget _buildBadgesSection(
+    BuildContext context, {
+    required User user,
+    required bool isCompact,
+  }) {
+    final colors = const [
+      Color(0xFFEAB308),
+      Color(0xFF3B82F6),
+      Color(0xFFA855F7),
+      Color(0xFF14B8A6),
+      Color(0xFFEF4444),
+      Color(0xFF22C55E),
     ];
+    final icons = const [
+      Icons.emoji_events_rounded,
+      Icons.groups_rounded,
+      Icons.bolt_rounded,
+      Icons.verified_rounded,
+      Icons.workspace_premium_rounded,
+      Icons.military_tech_rounded,
+    ];
+    final badges = _displayBadges(user).asMap().entries.map((entry) {
+      final index = entry.key;
+      return _ProfileBadgeData(
+        label: entry.value,
+        icon: icons[index % icons.length],
+        color: colors[index % colors.length],
+      );
+    }).toList();
 
     final crossAxisCount = isCompact ? 2 : 4;
 

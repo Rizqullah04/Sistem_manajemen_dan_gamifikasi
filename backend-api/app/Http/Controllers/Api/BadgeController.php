@@ -9,6 +9,7 @@ use App\Http\Resources\BadgeResource;
 use App\Models\Badge;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class BadgeController extends Controller
 {
@@ -21,7 +22,10 @@ class BadgeController extends Controller
 
     public function store(StoreBadgeRequest $request): JsonResponse
     {
-        $badge = Badge::create($request->validated());
+        $data = $request->validated();
+        $data['icon'] = $request->file('icon')->store('badges', 'public');
+
+        $badge = Badge::create($data);
 
         return $this->successResponse('Badge berhasil dibuat', new BadgeResource($badge), 201);
     }
@@ -33,13 +37,26 @@ class BadgeController extends Controller
 
     public function update(UpdateBadgeRequest $request, Badge $badge): JsonResponse
     {
-        $badge->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('icon')) {
+            if ($badge->icon) {
+                Storage::disk('public')->delete($badge->icon);
+            }
+            $data['icon'] = $request->file('icon')->store('badges', 'public');
+        }
+
+        $badge->update($data);
 
         return $this->successResponse('Badge berhasil diperbarui', new BadgeResource($badge));
     }
 
     public function destroy(Badge $badge): JsonResponse
     {
+        if ($badge->icon) {
+            Storage::disk('public')->delete($badge->icon);
+        }
+
         $badge->delete();
 
         return $this->successResponse('Badge berhasil dihapus');

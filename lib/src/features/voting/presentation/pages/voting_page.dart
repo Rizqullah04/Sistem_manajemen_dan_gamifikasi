@@ -1,13 +1,19 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/widgets/dashboard_home_action.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/pages/live_voting_preview_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/providers/voting_controller.dart';
 
 class VotingPage extends ConsumerStatefulWidget {
@@ -124,6 +130,8 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
   late DateTime _startDate;
   late DateTime _endDate;
   late final List<TextEditingController> _optionControllers;
+  late final List<Uint8List?> _optionImageBytes;
+  final _imagePicker = ImagePicker();
   bool _isSubmitting = false;
 
   @override
@@ -134,6 +142,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
     _startDate = DateTime.now().add(const Duration(days: 1));
     _endDate = _startDate.add(const Duration(days: 14));
     _optionControllers = [TextEditingController(), TextEditingController()];
+    _optionImageBytes = [null, null];
   }
 
   @override
@@ -296,18 +305,48 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                   const SizedBox(height: 12),
                   ...List.generate(_optionControllers.length, (index) {
                     final controller = _optionControllers[index];
+                    final imageBytes = _optionImageBytes[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
                         children: [
                           Expanded(
-                            child: TextField(
+                            child: TextFormField(
                               controller: controller,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
                                 labelText: 'Opsi ${index + 1}',
                                 hintText:
                                     'Contoh: Aula Utama / Gedung Serbaguna',
+                                prefixIcon: const Icon(
+                                  Icons.event_available_outlined,
+                                ),
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (imageBytes != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 4,
+                                        ),
+                                        child: CircleAvatar(
+                                          radius: 15,
+                                          backgroundImage:
+                                              MemoryImage(imageBytes),
+                                        ),
+                                      ),
+                                    IconButton(
+                                      tooltip: 'Pilih gambar opsi',
+                                      onPressed: () =>
+                                          _pickOptionImage(index),
+                                      icon: Icon(
+                                        imageBytes == null
+                                            ? Icons.add_photo_alternate_outlined
+                                            : Icons.photo_camera_back_outlined,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -317,6 +356,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                                 setState(() {
                                   controller.dispose();
                                   _optionControllers.removeAt(index);
+                                  _optionImageBytes.removeAt(index);
                                 });
                               },
                               icon: const Icon(Icons.remove_circle_outline),
@@ -328,14 +368,27 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                   }),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: () {
-                        setState(
-                          () => _optionControllers.add(TextEditingController()),
-                        );
+                        setState(() {
+                          _optionControllers.add(TextEditingController());
+                          _optionImageBytes.add(null);
+                        });
                       },
                       icon: const Icon(Icons.add),
                       label: const Text('Tambah Opsi'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFC4B5FD),
+                        side: const BorderSide(
+                          color: Color(0xFF8B5CF6),
+                          width: 1.3,
+                        ),
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -425,6 +478,19 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
   }
 
   String _formatDate(DateTime date) => DateFormat('dd MMM yyyy').format(date);
+
+  Future<void> _pickOptionImage(int index) async {
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 512,
+    );
+    if (image == null) return;
+    final bytes = await image.readAsBytes();
+    if (!mounted) return;
+    if (index >= _optionImageBytes.length) return;
+    setState(() => _optionImageBytes[index] = bytes);
+  }
 
   Future<void> _submit() async {
     final pollOptions = _pollOptions;
@@ -538,23 +604,31 @@ class _VotingPointSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1630),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white10),
+        color: const Color(0xFF1A1630).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
       ),
       child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          _PointChip(
+          _PointMetricChip(
+            icon: Icons.bolt_rounded,
             label: 'Poin ormawa',
             value: '$userPoints',
             highlighted: true,
           ),
-          _PointChip(label: 'Minimum ketua', value: '$minKetuaPoints'),
-          _PointChip(
+          _PointMetricChip(
+            icon: Icons.flag_circle_outlined,
+            label: 'Minimum ketua',
+            value: '$minKetuaPoints',
+          ),
+          _PointMetricChip(
+            icon: canCreateKetua
+                ? Icons.lock_open_rounded
+                : Icons.lock_outline_rounded,
             label: 'Voting ketua',
             value: canCreateKetua ? 'Terbuka' : 'Terkunci',
             highlighted: canCreateKetua,
@@ -565,52 +639,109 @@ class _VotingPointSummaryCard extends StatelessWidget {
   }
 }
 
-class _PointChip extends StatelessWidget {
-  const _PointChip({
+class _PointMetricChip extends StatelessWidget {
+  const _PointMetricChip({
+    required this.icon,
     required this.label,
     required this.value,
     this.highlighted = false,
   });
 
+  final IconData icon;
   final String label;
   final String value;
   final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
+    final color = highlighted ? const Color(0xFFC4B5FD) : Colors.white70;
     final backgroundColor = highlighted
-        ? const Color(0xFF6D28D9).withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.05);
-    final borderColor = highlighted ? const Color(0xFF8B5CF6) : Colors.white12;
+        ? const Color(0xFF7C3AED).withValues(alpha: 0.22)
+        : Colors.white.withValues(alpha: 0.07);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
+    return Chip(
+      avatar: Icon(icon, color: color, size: 18),
+      label: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label,
+            '$label ',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: Colors.white70,
                   fontWeight: FontWeight.w600,
                 ),
           ),
-          const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                 ),
           ),
         ],
       ),
+      backgroundColor: backgroundColor,
+      side: BorderSide(
+        color: highlighted ? const Color(0xFF8B5CF6) : Colors.white12,
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    );
+  }
+}
+
+class _OrmawaCreatorBadge extends StatelessWidget {
+  const _OrmawaCreatorBadge({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 15,
+          backgroundColor: const Color(0xFF6D28D9).withValues(alpha: 0.15),
+          child: Text(
+            _optionInitials(name),
+            style: const TextStyle(
+              color: Color(0xFF6D28D9),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant
+                      .withValues(alpha: 0.86),
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            'Pembuat',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -629,6 +760,8 @@ class _VotingCard extends ConsumerWidget {
       (sum, option) => sum + option.votes,
     );
     final hasVoted = user != null && voting.voterIds.contains(user.id);
+    final canUseVote = user?.role == UserRole.memberAccount;
+    final creatorOrmawaName = _creatorOrmawaNameFor(voting);
     final periodText =
         '${DateFormat('dd MMM').format(voting.startDate)} - ${DateFormat('dd MMM yyyy').format(voting.endDate)}';
 
@@ -639,6 +772,8 @@ class _VotingCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _OrmawaCreatorBadge(name: creatorOrmawaName),
+            const SizedBox(height: 10),
             Text(
               voting.type == VotingType.kegiatan
                   ? 'Voting Penilaian Kegiatan'
@@ -650,37 +785,48 @@ class _VotingCard extends ConsumerWidget {
             const SizedBox(height: 10),
             ...voting.options.map((option) {
               final ratio = totalVotes == 0 ? 0.0 : option.votes / totalVotes;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(option.title)),
-                        Text('${option.votes} suara'),
-                      ],
+              return _VoteOptionTile(
+                option: option,
+                ratio: ratio,
+                canTap: voting.isActive && !hasVoted && user != null,
+                canVote: canUseVote,
+                ormawaName: creatorOrmawaName,
+                onOpenPreview: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => LiveVotingPreviewPage(
+                        data: _buildLivePreviewData(
+                          voting: voting,
+                          creatorOrmawaName: creatorOrmawaName,
+                        ),
+                        onCandidateVote: (_) => Navigator.of(context).pop(),
+                        onActivityVote: (_) => Navigator.of(context).pop(),
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(value: ratio),
-                    const SizedBox(height: 4),
-                    FilledButton.tonal(
-                      onPressed: (voting.isActive && !hasVoted && user != null)
-                          ? () {
-                              ref
-                                  .read(votingControllerProvider.notifier)
-                                  .castVote(
-                                    votingId: voting.id,
-                                    optionId: option.id,
-                                  );
-                            }
-                          : null,
-                      child: const Text('Pilih'),
-                    ),
-                  ],
-                ),
+                  );
+                },
+                onVote: () async {
+                  try {
+                    await ref
+                        .read(votingControllerProvider.notifier)
+                        .castVote(votingId: voting.id, optionId: option.id);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vote berhasil disimpan.')),
+                    );
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(_errorMessage(error))),
+                    );
+                  }
+                },
               );
             }),
+            if (user != null && !canUseVote)
+              Text(
+                'Voting hanya tersedia untuk akun anggota resmi $creatorOrmawaName.',
+              ),
             if (hasVoted) const Text('Anda sudah menggunakan hak suara.'),
             if (canManagePeriod)
               Align(
@@ -705,4 +851,457 @@ class _VotingCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _VoteOptionTile extends StatelessWidget {
+  const _VoteOptionTile({
+    required this.option,
+    required this.ratio,
+    required this.canTap,
+    required this.canVote,
+    required this.ormawaName,
+    required this.onOpenPreview,
+    required this.onVote,
+  });
+
+  final VoteOption option;
+  final double ratio;
+  final bool canTap;
+  final bool canVote;
+  final String ormawaName;
+  final VoidCallback onOpenPreview;
+  final Future<void> Function() onVote;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _optionColor(option.title);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onOpenPreview,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant
+                    .withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: color.withValues(alpha: 0.18),
+                  child: Text(
+                    _optionInitials(option.title),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              option.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${option.votes} suara',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _LiveDetailBadge(color: color),
+                          Text(
+                            'Tap untuk melihat preview live',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _AnimatedVoteBar(value: ratio, color: color),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 6),
+                    _VoteActionButton(
+                      canTap: canTap,
+                      canVote: canVote,
+                      ormawaName: ormawaName,
+                      onVote: onVote,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveDetailBadge extends StatelessWidget {
+  const _LiveDetailBadge({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.sensors_rounded, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            'Lihat Detail/Live',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimatedVoteBar extends StatelessWidget {
+  const _AnimatedVoteBar({required this.value, required this.color});
+
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: value.clamp(0.0, 1.0).toDouble()),
+      duration: const Duration(milliseconds: 650),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            height: 9,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: animatedValue,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.58)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _VoteActionButton extends StatefulWidget {
+  const _VoteActionButton({
+    required this.canTap,
+    required this.canVote,
+    required this.ormawaName,
+    required this.onVote,
+  });
+
+  final bool canTap;
+  final bool canVote;
+  final String ormawaName;
+  final Future<void> Function() onVote;
+
+  @override
+  State<_VoteActionButton> createState() => _VoteActionButtonState();
+}
+
+class _VoteActionButtonState extends State<_VoteActionButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shakeController;
+  late final Animation<double> _shakeAnimation;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0, end: -8), weight: 1),
+      TweenSequenceItem(tween: Tween<double>(begin: -8, end: 8), weight: 2),
+      TweenSequenceItem(tween: Tween<double>(begin: 8, end: -6), weight: 2),
+      TweenSequenceItem(tween: Tween<double>(begin: -6, end: 6), weight: 2),
+      TweenSequenceItem(tween: Tween<double>(begin: 6, end: 0), weight: 1),
+    ]).animate(
+      CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final button = FilledButton(
+      onPressed: widget.canTap && !_isSubmitting ? _handlePressed : null,
+      style: FilledButton.styleFrom(
+        shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: _isSubmitting
+            ? const SizedBox(
+                key: ValueKey('loading'),
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(key: ValueKey('label'), 'Pilih'),
+      ),
+    );
+
+    return AnimatedBuilder(
+      animation: _shakeAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_shakeAnimation.value, 0),
+          child: child,
+        );
+      },
+      child: button,
+    );
+  }
+
+  Future<void> _handlePressed() async {
+    if (!widget.canVote) {
+      await _shakeController.forward(from: 0);
+      if (!mounted) return;
+      _showMemberOnlySheet(context, widget.ormawaName);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await widget.onVote();
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+}
+
+void _showMemberOnlySheet(BuildContext context, String ormawaName) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor:
+                    Theme.of(sheetContext).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.how_to_reg_rounded,
+                  color: Theme.of(sheetContext).colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Fitur ini khusus Anggota',
+                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Voting hanya tersedia untuk akun anggota resmi $ormawaName. Yuk, daftar atau lengkapi profilmu di sini untuk ikut voting!',
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    context.push('/profile');
+                  },
+                  icon: const Icon(Icons.person_add_alt_1_rounded),
+                  label: const Text('Lengkapi Profil'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+String _optionInitials(String title) {
+  final words = title.trim().split(RegExp(r'\s+'));
+  if (words.isEmpty || words.first.isEmpty) return '?';
+  if (words.length == 1) {
+    return words.first.runes
+        .take(2)
+        .map(String.fromCharCode)
+        .join()
+        .toUpperCase();
+  }
+  return words
+      .take(2)
+      .map((word) => String.fromCharCode(word.runes.first))
+      .join()
+      .toUpperCase();
+}
+
+Color _optionColor(String seed) {
+  const colors = [
+    Color(0xFF7C3AED),
+    Color(0xFF0EA5E9),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+  ];
+  return colors[seed.hashCode.abs() % colors.length];
+}
+
+String _creatorOrmawaNameFor(Voting voting) {
+  const names = [
+    'BEM Fakultas Teknik',
+    'Himpunan Mahasiswa Teknologi Informasi',
+    'Himpunan Mahasiswa Sistem Informasi',
+    'Unit Kegiatan Mahasiswa Teknologi',
+  ];
+  final seed = '${voting.relatedId}-${voting.id}';
+  return names[seed.hashCode.abs() % names.length];
+}
+
+VotingModel _buildLivePreviewData({
+  required Voting voting,
+  required String creatorOrmawaName,
+}) {
+  final totalVotes = voting.options.fold<int>(
+    0,
+    (sum, option) => sum + option.votes,
+  );
+  final participantTarget = totalVotes <= 0 ? 100 : totalVotes + 30;
+  final isKetua = voting.type == VotingType.ketua;
+
+  return VotingModel(
+    tipeVoting: isKetua ? 'KETUA' : 'KEGIATAN',
+    title: isKetua
+        ? 'Voting Ketua Ormawa - $creatorOrmawaName'
+        : 'Voting Program Kegiatan - $creatorOrmawaName',
+    endTime: voting.endDate,
+    totalParticipants: totalVotes,
+    targetParticipants: participantTarget,
+    candidates: isKetua
+        ? voting.options
+              .map(
+                (option) => CandidateVotingOption(
+                  name: option.title,
+                  slogan: 'Bersama membangun ormawa yang aktif dan berdampak.',
+                  voteCount: option.votes,
+                ),
+              )
+              .toList()
+        : const [],
+    activities: isKetua
+        ? const []
+        : voting.options
+              .map(
+                (option) => ActivityVotingOption(
+                  name: option.title,
+                  description:
+                      'Rencana kegiatan kolaboratif dari $creatorOrmawaName.',
+                  estimatedDate: voting.startDate.add(
+                    Duration(days: voting.options.indexOf(option) * 7),
+                  ),
+                  voteCount: option.votes,
+                  icon: option.title.toLowerCase().contains('webinar')
+                      ? Icons.school_rounded
+                      : Icons.event_available_rounded,
+                ),
+              )
+              .toList(),
+  );
+}
+
+String _errorMessage(Object error) {
+  if (error is AppException) return error.message;
+  if (error is DioException) {
+    final data = error.response?.data;
+    if (data is Map<String, dynamic> && data['message'] != null) {
+      return data['message'].toString();
+    }
+  }
+  return 'Gagal menyimpan vote.';
 }

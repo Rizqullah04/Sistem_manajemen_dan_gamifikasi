@@ -56,11 +56,9 @@ class ActivityController extends StateNotifier<ActivityState> {
       errorMessage: null,
     );
     try {
-      final page = await _ref.read(activityRepositoryProvider).fetchActivities(
-            page: 1,
-            pageSize: _pageSize,
-            user: user,
-          );
+      final page = await _ref
+          .read(activityRepositoryProvider)
+          .fetchActivities(page: 1, pageSize: _pageSize, user: user);
       state = state.copyWith(
         items: page.items,
         page: 1,
@@ -78,11 +76,9 @@ class ActivityController extends StateNotifier<ActivityState> {
     if (user == null) return;
     state = state.copyWith(isLoadingMore: true, errorMessage: null);
     final nextPage = state.page + 1;
-    final page = await _ref.read(activityRepositoryProvider).fetchActivities(
-          page: nextPage,
-          pageSize: _pageSize,
-          user: user,
-        );
+    final page = await _ref
+        .read(activityRepositoryProvider)
+        .fetchActivities(page: nextPage, pageSize: _pageSize, user: user);
     state = state.copyWith(
       items: [...state.items, ...page.items],
       page: nextPage,
@@ -116,6 +112,25 @@ class ActivityController extends StateNotifier<ActivityState> {
     await loadInitial();
   }
 
+  Future<void> update({
+    required Activity activity,
+    required String title,
+    required String description,
+    required DateTime date,
+    required String documentation,
+    required String category,
+  }) async {
+    final updatedActivity = activity.copyWith(
+      title: title,
+      description: description,
+      date: date,
+      documentation: documentation,
+      category: category,
+    );
+    await _ref.read(activityRepositoryProvider).updateActivity(updatedActivity);
+    await loadInitial();
+  }
+
   Future<void> delete(String activityId) async {
     await _ref.read(activityRepositoryProvider).deleteActivity(activityId);
     await loadInitial();
@@ -126,16 +141,14 @@ class ActivityController extends StateNotifier<ActivityState> {
     required ActivityStatus status,
     required String note,
   }) async {
-    await _ref.read(activityRepositoryProvider).verifyActivity(
-          activityId: activityId,
-          status: status,
-          note: note,
-        );
+    await _ref
+        .read(activityRepositoryProvider)
+        .verifyActivity(activityId: activityId, status: status, note: note);
     await loadInitial();
   }
 }
 
 final activityControllerProvider =
     StateNotifierProvider<ActivityController, ActivityState>((ref) {
-  return ActivityController(ref);
-});
+      return ActivityController(ref);
+    });

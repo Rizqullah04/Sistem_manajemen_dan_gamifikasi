@@ -71,6 +71,14 @@ class AuthRemoteDataSource {
     };
 
     final points = int.tryParse(data['poin']?.toString() ?? '0') ?? 0;
+    final badgesData = data['badges'];
+    final badges = badgesData is List
+        ? badgesData
+              .whereType<Map<String, dynamic>>()
+              .map((badge) => badge['nama_badge']?.toString() ?? '')
+              .where((name) => name.isNotEmpty)
+              .toList()
+        : const <String>[];
 
     return User(
       id: data['id_user']?.toString() ?? data['id']?.toString() ?? '',
@@ -80,6 +88,7 @@ class AuthRemoteDataSource {
       points: points,
       level: levelFromPoints(points),
       ormawaId: data['id_ormawa']?.toString(),
+      badges: badges,
     );
   }
 }

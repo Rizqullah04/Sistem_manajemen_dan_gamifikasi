@@ -12,7 +12,7 @@ class StoreBadgeRequest extends ApiFormRequest
             'nama_badge' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string'],
             'minimal_poin' => ['required', 'integer', 'min:0'],
-            'icon' => ['nullable', 'string', 'max:255'],
+            'icon' => ['required', 'image', 'mimes:png', 'max:2048', 'dimensions:ratio=1/1'],
         ];
     }
 }

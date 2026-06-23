@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DiskusiController;
 use App\Http\Controllers\Api\DokumentasiKegiatanController;
@@ -47,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/periods/end-current', [PeriodController::class, 'endCurrent']);
         Route::post('/ormawa-awards/preview', [OrmawaAwardController::class, 'preview']);
         Route::post('/ormawa-awards/generate', [OrmawaAwardController::class, 'generate']);
+        Route::apiResource('badges', BadgeController::class);
         Route::apiResource('penilaians', PenilaianController::class);
         Route::get('/poin-logs', [PoinLogController::class, 'index']);
         Route::patch('/ormawas/{ormawa}/recalculate-poin', [PoinLogController::class, 'recalculateOrmawa']);
