@@ -141,6 +141,18 @@ class AdminSidebar extends ConsumerWidget {
                     context.push('/ormawa/members');
                   },
                 ),
+              if (user?.role == UserRole.adminFaculty)
+                _buildMenuItem(
+                  context,
+                  icon: Icons.apartment_rounded,
+                  label: 'Data Ormawa',
+                  onTap: () {
+                    if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+                      Navigator.pop(context);
+                    }
+                    context.push('/admin/ormawas');
+                  },
+                ),
               _buildMenuItem(
                 context,
                 icon: Icons.settings_outlined,

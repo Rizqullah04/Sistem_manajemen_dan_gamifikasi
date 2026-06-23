@@ -38,6 +38,12 @@ class DashboardScaffold extends ConsumerWidget {
               icon: const Icon(Icons.groups_outlined),
               tooltip: 'Anggota Ormawa',
             ),
+          if (!showFixedSidebar && user?.role == UserRole.adminFaculty)
+            IconButton(
+              onPressed: () => context.push('/admin/ormawas'),
+              icon: const Icon(Icons.apartment_rounded),
+              tooltip: 'Data Ormawa',
+            ),
           if (!showFixedSidebar)
             IconButton(
               onPressed: () => context.push('/activities'),
@@ -77,11 +83,14 @@ class DashboardScaffold extends ConsumerWidget {
                     SizedBox(
                       width: DashboardResponsive.sidebarWidth,
                       child: Material(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         child: AdminSidebar(
                           user: user,
                           onLogout: onLogout,
-                          onEditProfile: () => _showEditProfileDialog(context, ref, user),
+                          onEditProfile: () =>
+                              _showEditProfileDialog(context, ref, user),
                         ),
                       ),
                     ),
@@ -128,9 +137,9 @@ class DashboardScaffold extends ConsumerWidget {
             FilledButton(
               onPressed: () {
                 if (!formKey.currentState!.validate()) return;
-                ref.read(authControllerProvider.notifier).updateProfile(
-                      name: nameController.text.trim(),
-                    );
+                ref
+                    .read(authControllerProvider.notifier)
+                    .updateProfile(name: nameController.text.trim());
                 Navigator.pop(context);
               },
               child: const Text('Simpan'),

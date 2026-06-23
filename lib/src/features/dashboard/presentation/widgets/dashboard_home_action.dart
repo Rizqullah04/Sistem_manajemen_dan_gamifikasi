@@ -5,10 +5,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entitie
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 
 class DashboardHomeAction extends ConsumerWidget {
-  const DashboardHomeAction({
-    this.hideWhenCurrent = true,
-    super.key,
-  });
+  const DashboardHomeAction({this.hideWhenCurrent = true, super.key});
 
   final bool hideWhenCurrent;
 
@@ -18,7 +15,7 @@ class DashboardHomeAction extends ConsumerWidget {
     final route = dashboardHomeRoute(user?.role);
     if (route == null) return const SizedBox.shrink();
 
-    final currentPath = GoRouterState.of(context).uri.path;
+    final currentPath = _currentPath(context);
     if (hideWhenCurrent && currentPath == route) return const SizedBox.shrink();
 
     return IconButton(
@@ -26,6 +23,14 @@ class DashboardHomeAction extends ConsumerWidget {
       icon: const Icon(Icons.home_outlined),
       tooltip: 'Kembali ke Dashboard',
     );
+  }
+
+  String? _currentPath(BuildContext context) {
+    try {
+      return GoRouterState.of(context).uri.path;
+    } on GoError {
+      return null;
+    }
   }
 }
 

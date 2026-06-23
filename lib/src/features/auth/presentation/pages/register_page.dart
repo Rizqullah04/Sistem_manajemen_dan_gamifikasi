@@ -68,14 +68,26 @@ class _RegisterPageState extends State<RegisterPage> {
       final decoded = jsonDecode(response.body);
       final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
       final options = data is List
-          ? data.whereType<Map<String, dynamic>>().map(_OrmawaOption.fromJson).toList()
+          ? data
+                .whereType<Map<String, dynamic>>()
+                .map(_OrmawaOption.fromJson)
+                .toList()
           : <_OrmawaOption>[];
+      final currentSelectionStillExists = options.any(
+        (option) => option.id == _selectedOrmawaId,
+      );
+      String? nextSelection;
+      if (currentSelectionStillExists) {
+        nextSelection = _selectedOrmawaId;
+      } else if (options.length == 1) {
+        nextSelection = options.first.id;
+      }
 
       setState(() {
         _ormawaOptions
           ..clear()
           ..addAll(options);
-        _selectedOrmawaId = options.length == 1 ? options.first.id : _selectedOrmawaId;
+        _selectedOrmawaId = nextSelection;
         _isLoadingOrmawa = false;
       });
     } catch (_) {
@@ -119,9 +131,9 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_readErrorMessage(response.body))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_readErrorMessage(response.body))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -339,8 +351,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           const SizedBox(height: 14),
                           TextButton(
-                            onPressed:
-                                _isLoading ? null : () => context.go('/login'),
+                            onPressed: _isLoading
+                                ? null
+                                : () => context.go('/login'),
                             child: const Text('Sudah punya akun? Login'),
                           ),
                         ],
@@ -363,13 +376,14 @@ class _RegisterPageState extends State<RegisterPage> {
         Text(
           'Ormawa',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedOrmawaId,
+          key: ValueKey(_selectedOrmawaId),
+          initialValue: _selectedOrmawaId,
           validator: _validateOrmawa,
           isExpanded: true,
           dropdownColor: const Color(0xFF22133E),
@@ -387,10 +401,12 @@ class _RegisterPageState extends State<RegisterPage> {
             }).toList();
           },
           decoration: InputDecoration(
-            hintText:
-                _isLoadingOrmawa ? 'Memuat daftar Ormawa...' : 'Pilih Ormawa',
+            hintText: _isLoadingOrmawa
+                ? 'Memuat daftar Ormawa...'
+                : 'Pilih Ormawa',
             hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-            helperText: _ormawaErrorMessage ??
+            helperText:
+                _ormawaErrorMessage ??
                 (_ormawaOptions.isEmpty && !_isLoadingOrmawa
                     ? 'Belum ada Ormawa. Admin perlu menambahkan data Ormawa dulu.'
                     : 'Ormawa yang dipilih akan menerima notifikasi pendaftaran Anda'),

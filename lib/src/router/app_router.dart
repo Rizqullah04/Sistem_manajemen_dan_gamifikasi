@@ -4,6 +4,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presenta
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/pages/login_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/pages/register_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_dashboard_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/dashboard_leaderboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/member_dashboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/ormawa_dashboard_page.dart';
@@ -18,10 +19,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/login',
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginPage(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterPage(),
@@ -29,6 +27,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin',
         builder: (context, state) => const AdminDashboardPage(),
+      ),
+      GoRoute(
+        path: '/admin/ormawas',
+        builder: (context, state) => const AdminOrmawaPage(),
       ),
       GoRoute(
         path: '/ormawa',
@@ -54,10 +56,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/achievement',
         builder: (context, state) => const AchievementPage(),
       ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ChatPage(),
-      ),
+      GoRoute(path: '/chat', builder: (context, state) => const ChatPage()),
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfilePage(),
@@ -66,10 +65,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         builder: (context, state) => const SettingsPage(),
       ),
-      GoRoute(
-        path: '/voting',
-        builder: (context, state) => const VotingPage(),
-      ),
+      GoRoute(path: '/voting', builder: (context, state) => const VotingPage()),
     ],
   );
 });
