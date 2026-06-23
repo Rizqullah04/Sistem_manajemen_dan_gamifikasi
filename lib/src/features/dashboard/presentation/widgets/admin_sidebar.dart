@@ -153,6 +153,18 @@ class AdminSidebar extends ConsumerWidget {
                     context.push('/admin/ormawas');
                   },
                 ),
+              if (user?.role == UserRole.adminFaculty)
+                _buildMenuItem(
+                  context,
+                  icon: Icons.emoji_events_outlined,
+                  label: 'Ormawa Awards',
+                  onTap: () {
+                    if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+                      Navigator.pop(context);
+                    }
+                    context.push('/admin/ormawa-awards');
+                  },
+                ),
               _buildMenuItem(
                 context,
                 icon: Icons.settings_outlined,

@@ -44,6 +44,12 @@ class DashboardScaffold extends ConsumerWidget {
               icon: const Icon(Icons.apartment_rounded),
               tooltip: 'Data Ormawa',
             ),
+          if (!showFixedSidebar && user?.role == UserRole.adminFaculty)
+            IconButton(
+              onPressed: () => context.push('/admin/ormawa-awards'),
+              icon: const Icon(Icons.emoji_events_outlined),
+              tooltip: 'Ormawa Awards',
+            ),
           if (!showFixedSidebar)
             IconButton(
               onPressed: () => context.push('/activities'),

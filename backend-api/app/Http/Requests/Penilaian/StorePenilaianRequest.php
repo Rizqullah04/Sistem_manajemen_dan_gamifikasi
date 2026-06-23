@@ -9,7 +9,7 @@ class StorePenilaianRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'kegiatan_id' => ['required', 'exists:kegiatans,id'],
+            'kegiatan_id' => ['required', 'exists:kegiatans,id_kegiatan'],
             'nilai_kreativitas' => ['required', 'integer', 'min:0', 'max:100'],
             'nilai_dampak' => ['required', 'integer', 'min:0', 'max:100'],
             'nilai_partisipasi' => ['required', 'integer', 'min:0', 'max:100'],
