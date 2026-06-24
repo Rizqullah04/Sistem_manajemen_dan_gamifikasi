@@ -463,6 +463,10 @@ class _BadgeCard extends StatelessWidget {
                         icon: Icons.flag_outlined,
                         label: 'Minimal ${badge.minimumPoints} poin',
                       ),
+                      _InfoChip(
+                        icon: Icons.category_outlined,
+                        label: badge.activityType,
+                      ),
                       if (badge.icon.isNotEmpty)
                         _InfoChip(
                           icon: Icons.image_outlined,
@@ -544,10 +548,18 @@ class _BadgeFormDialog extends StatefulWidget {
 }
 
 class _BadgeFormDialogState extends State<_BadgeFormDialog> {
+  static const _activityTypeOptions = [
+    'Poin Kumulatif',
+    'Keaktifan Diskusi',
+    'Partisipasi Event',
+    'Voting Berhasil',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _minimumPointsController;
+  late String _selectedActivityType;
   _PickedBadgeIcon? _selectedIcon;
 
   bool get _isCreate => widget.mode == _BadgeFormMode.create;
@@ -563,6 +575,9 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
     _minimumPointsController = TextEditingController(
       text: initial?.minimumPoints.toString() ?? '',
     );
+    _selectedActivityType = _activityTypeOptions.contains(initial?.activityType)
+        ? initial!.activityType
+        : _activityTypeOptions.first;
   }
 
   @override
@@ -595,6 +610,19 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Deskripsi Lencana',
+                    hintText:
+                        'Contoh: Diberikan kepada mahasiswa yang aktif berkontribusi dalam kegiatan.',
+                    border: OutlineInputBorder(),
+                  ),
+                  minLines: 3,
+                  maxLines: 3,
+                  validator: _required('Deskripsi lencana wajib diisi'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
                   controller: _minimumPointsController,
                   decoration: const InputDecoration(
                     labelText: 'Ambang Batas Poin',
@@ -611,14 +639,31 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
+                DropdownButtonFormField<String>(
+                  value: _selectedActivityType,
+                  items: _activityTypeOptions
+                      .map(
+                        (type) => DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _selectedActivityType = value);
+                  },
                   decoration: const InputDecoration(
                     labelText: 'Kriteria/Kategori Lencana',
+                    prefixIcon: Icon(Icons.category_outlined),
                     border: OutlineInputBorder(),
                   ),
-                  minLines: 2,
-                  maxLines: 4,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Kriteria lencana wajib dipilih';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 FormField<_PickedBadgeIcon>(
@@ -753,6 +798,7 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
       _BadgeFormResult(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
+        activityType: _selectedActivityType,
         minimumPoints: int.parse(_minimumPointsController.text.trim()),
         icon: _selectedIcon,
       ),
@@ -774,12 +820,14 @@ class _BadgeFormResult {
   const _BadgeFormResult({
     required this.name,
     required this.description,
+    required this.activityType,
     required this.minimumPoints,
     required this.icon,
   });
 
   final String name;
   final String description;
+  final String activityType;
   final int minimumPoints;
   final _PickedBadgeIcon? icon;
 
@@ -787,6 +835,7 @@ class _BadgeFormResult {
     final data = <String, dynamic>{
       'nama_badge': name,
       'deskripsi': description.isEmpty ? '' : description,
+      'activity_type': activityType,
       'minimal_poin': minimumPoints,
       if (methodOverride != null) '_method': methodOverride,
     };
@@ -808,6 +857,7 @@ class GamificationBadge {
     required this.id,
     required this.name,
     required this.description,
+    required this.activityType,
     required this.minimumPoints,
     required this.icon,
   });
@@ -815,6 +865,7 @@ class GamificationBadge {
   final String id;
   final String name;
   final String description;
+  final String activityType;
   final int minimumPoints;
   final String icon;
 
@@ -823,6 +874,7 @@ class GamificationBadge {
       id: json['id']?.toString() ?? '',
       name: json['nama_badge']?.toString() ?? '-',
       description: json['deskripsi']?.toString() ?? '',
+      activityType: json['activity_type']?.toString() ?? 'Poin Kumulatif',
       minimumPoints:
           int.tryParse(json['minimal_poin']?.toString() ?? '0') ?? 0,
       icon: json['icon']?.toString() ?? '',

@@ -13,6 +13,7 @@ class BadgeResource extends JsonResource
             'id' => $this->id,
             'nama_badge' => $this->nama_badge,
             'deskripsi' => $this->deskripsi,
+            'activity_type' => $this->activity_type,
             'minimal_poin' => $this->minimal_poin,
             'icon' => $this->icon,
             'tanggal_diperoleh' => $this->pivot?->tanggal_diperoleh,

@@ -11,6 +11,7 @@ class Badge extends Model
     protected $fillable = [
         'nama_badge',
         'deskripsi',
+        'activity_type',
         'minimal_poin',
         'icon',
     ];

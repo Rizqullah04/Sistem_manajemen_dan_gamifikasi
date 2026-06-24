@@ -789,13 +789,39 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   }
 
   Widget _buildSidebar(BuildContext context, User user) {
-    final items = const [
-      (icon: Icons.home_rounded, label: 'Home', route: null),
-      (icon: Icons.emoji_events_outlined, label: 'Rank', route: null),
-      (icon: Icons.event_note_outlined, label: 'Activity', route: null),
-      (icon: Icons.how_to_vote_rounded, label: 'Voting', route: '/voting'),
-      (icon: Icons.person_rounded, label: 'Profile', route: null),
-      (icon: Icons.settings_outlined, label: 'Pengaturan', route: '/settings'),
+    const List<
+      ({
+        IconData icon,
+        String label,
+        String? route,
+        int? tabIndex,
+      })
+    > items = [
+      (icon: Icons.home_rounded, label: 'Home', route: null, tabIndex: 0),
+      (
+        icon: Icons.event_note_outlined,
+        label: 'Activity',
+        route: null,
+        tabIndex: 2,
+      ),
+      (
+        icon: Icons.how_to_vote_rounded,
+        label: 'Voting',
+        route: '/voting',
+        tabIndex: null,
+      ),
+      (
+        icon: Icons.person_rounded,
+        label: 'Profile',
+        route: null,
+        tabIndex: 3,
+      ),
+      (
+        icon: Icons.settings_outlined,
+        label: 'Pengaturan',
+        route: '/settings',
+        tabIndex: null,
+      ),
     ];
 
     return Drawer(
@@ -860,21 +886,22 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 items.length,
                 (index) {
                   final route = items[index].route;
-                  final internalIndex = index > 3 ? index - 1 : index;
+                  final tabIndex = items[index].tabIndex;
                   final item = Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _buildSidebarItem(
                       context,
                       icon: items[index].icon,
                       label: items[index].label,
-                      isActive: route == null && _selectedIndex == internalIndex,
+                      isActive: tabIndex != null && _selectedIndex == tabIndex,
                       onTap: () {
                         Navigator.pop(context);
                         if (route != null) {
                           context.push(route);
                           return;
                         }
-                        setState(() => _selectedIndex = internalIndex);
+                        if (tabIndex == null) return;
+                        setState(() => _selectedIndex = tabIndex);
                       },
                     ),
                   );
@@ -886,7 +913,10 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                     child: Column(
                       children: [
                         item,
-                        _buildGamificationSidebarMenu(context),
+                        _buildGamificationSidebarMenu(
+                          context,
+                          isRankActive: _selectedIndex == 1,
+                        ),
                       ],
                     ),
                   );
@@ -914,7 +944,10 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     );
   }
 
-  Widget _buildGamificationSidebarMenu(BuildContext context) {
+  Widget _buildGamificationSidebarMenu(
+    BuildContext context, {
+    required bool isRankActive,
+  }) {
     return Theme(
       data: Theme.of(context).copyWith(
         dividerColor: Colors.transparent,
@@ -925,6 +958,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(18),
         child: ExpansionTile(
+          initiallyExpanded: isRankActive,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
           childrenPadding: const EdgeInsets.fromLTRB(42, 0, 8, 8),
           collapsedShape: RoundedRectangleBorder(
@@ -948,6 +982,29 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
             ),
           ),
           children: [
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.leaderboard_outlined,
+                color: isRankActive
+                    ? const Color(0xFFFFD400)
+                    : const Color(0xFF8B5CF6),
+              ),
+              title: Text(
+                'Peringkat & Rank',
+                style: TextStyle(
+                  color: isRankActive
+                      ? const Color(0xFFFFD400)
+                      : const Color(0xFF8B5CF6),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 1);
+              },
+            ),
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,

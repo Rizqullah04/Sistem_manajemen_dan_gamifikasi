@@ -393,6 +393,7 @@ Future<void> _pumpPage(
               id: 'b1',
               name: 'Active Participant',
               description: 'Aktif berpartisipasi dalam kegiatan.',
+              activityType: 'Poin Kumulatif',
               minimumPoints: 50,
               icon: 'active-participant.png',
             ),

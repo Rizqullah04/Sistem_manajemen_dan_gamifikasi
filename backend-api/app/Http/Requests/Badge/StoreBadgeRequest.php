@@ -11,6 +11,7 @@ class StoreBadgeRequest extends ApiFormRequest
         return [
             'nama_badge' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string'],
+            'activity_type' => ['required', 'string', 'in:Poin Kumulatif,Keaktifan Diskusi,Partisipasi Event,Voting Berhasil'],
             'minimal_poin' => ['required', 'integer', 'min:0'],
             'icon' => ['required', 'image', 'mimes:png', 'max:2048', 'dimensions:ratio=1/1'],
         ];

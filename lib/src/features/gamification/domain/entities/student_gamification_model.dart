@@ -66,6 +66,7 @@ class StudentBadgeModel {
     required this.name,
     required this.description,
     required this.minimumPoints,
+    required this.activityType,
     required this.status,
     this.icon,
     this.awardedAt,
@@ -75,6 +76,7 @@ class StudentBadgeModel {
   final String name;
   final String description;
   final int minimumPoints;
+  final String activityType;
   final String status;
   final String? icon;
   final DateTime? awardedAt;
@@ -93,6 +95,7 @@ class StudentBadgeModel {
       description: json['deskripsi']?.toString() ?? '',
       minimumPoints:
           int.tryParse(json['minimal_poin']?.toString() ?? '0') ?? 0,
+      activityType: json['activity_type']?.toString() ?? 'Poin Kumulatif',
       status: rawStatus == null || rawStatus.isEmpty
           ? (awardedAt == null ? 'locked' : 'unlocked')
           : rawStatus,

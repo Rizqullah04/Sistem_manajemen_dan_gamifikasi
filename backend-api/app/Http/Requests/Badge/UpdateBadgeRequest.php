@@ -11,6 +11,7 @@ class UpdateBadgeRequest extends ApiFormRequest
         return [
             'nama_badge' => ['sometimes', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string'],
+            'activity_type' => ['sometimes', 'string', 'in:Poin Kumulatif,Keaktifan Diskusi,Partisipasi Event,Voting Berhasil'],
             'minimal_poin' => ['sometimes', 'integer', 'min:0'],
             'icon' => ['sometimes', 'image', 'mimes:png', 'max:2048', 'dimensions:ratio=1/1'],
         ];
