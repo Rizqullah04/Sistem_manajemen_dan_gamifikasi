@@ -14,6 +14,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentat
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/chat_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/profile_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/settings_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/pages/student_gamification_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/presentation/pages/voting_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -60,6 +61,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/leaderboard',
         builder: (context, state) => const DashboardLeaderboardPage(),
+      ),
+      GoRoute(
+        path: '/gamification/points-badges',
+        builder: (context, state) => const StudentGamificationPage(),
       ),
       GoRoute(
         path: '/achievement',

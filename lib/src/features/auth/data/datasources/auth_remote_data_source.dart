@@ -42,6 +42,11 @@ class AuthRemoteDataSource {
       if (data is Map<String, dynamic>) {
         final message = data['message'];
         if (message is String && message.isNotEmpty) {
+          if (_isDatabaseConnectionError(message)) {
+            throw const AppException(
+              'Database server belum bisa dihubungi. Pastikan MySQL aktif dan konfigurasi database backend sudah benar.',
+            );
+          }
           throw AppException(message);
         }
       }
@@ -57,6 +62,14 @@ class AuthRemoteDataSource {
         'Tidak dapat terhubung ke server API (${_dio.options.baseUrl}). Pastikan alamat API sudah benar.',
       );
     }
+  }
+
+  bool _isDatabaseConnectionError(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('sqlstate') ||
+        normalized.contains('connection refused') ||
+        normalized.contains('database connection') ||
+        normalized.contains('could not be made');
   }
 
   void clearToken() {

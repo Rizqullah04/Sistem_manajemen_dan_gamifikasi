@@ -26,14 +26,27 @@ class VotingPage extends ConsumerStatefulWidget {
 
 class _VotingPageState extends ConsumerState<VotingPage> {
   static const int _minKetuaPoints = 100;
-  final Map<String, DateTime> _endDateOverrides = {};
-  final Map<String, String> _statusOverrides = {};
-  final Set<String> _deletedVotingIds = {};
+  final List<Voting> _allVotingList = [];
+  final Set<String> _locallyDeletedVotingIds = {};
+  ProviderSubscription<VotingState>? _votingSubscription;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(votingControllerProvider.notifier).load());
+    _votingSubscription = ref.listenManual<VotingState>(
+      votingControllerProvider,
+      (previous, next) {
+        if (!mounted || next.items.isEmpty) return;
+        _mergeVotingList(next.items);
+      },
+    );
+    Future.microtask(_reloadVotingList);
+  }
+
+  @override
+  void dispose() {
+    _votingSubscription?.close();
+    super.dispose();
   }
 
   @override
@@ -42,6 +55,9 @@ class _VotingPageState extends ConsumerState<VotingPage> {
     final user = ref.watch(authControllerProvider).user;
     final userRole = _resolveUserRoleLabel(user?.role);
     final canManageVoting = userRole == 'ADMIN' || userRole == 'ORMAWA';
+    final nowUtc = _normalizedNow();
+    final activeVotes = _activeVotes(nowUtc);
+    final completedVotes = _completedVotes(nowUtc);
 
     return Scaffold(
       appBar: AppBar(
@@ -54,7 +70,7 @@ class _VotingPageState extends ConsumerState<VotingPage> {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => VotingLogPage(
-                    completedVotes: _completedVotes(state.items),
+                    completedVotes: completedVotes,
                   ),
                 ),
               );
@@ -62,7 +78,7 @@ class _VotingPageState extends ConsumerState<VotingPage> {
             icon: const Icon(Icons.history_rounded),
           ),
           IconButton(
-            onPressed: () => ref.read(votingControllerProvider.notifier).load(),
+            onPressed: _reloadVotingList,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -71,38 +87,20 @@ class _VotingPageState extends ConsumerState<VotingPage> {
           ? FloatingActionButton.extended(
               onPressed: user == null
                   ? null
-                  : () {
-                      showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) {
-                          return _CreateVotingSheet(
-                            user: user,
-                            minKetuaPoints: _minKetuaPoints,
-                          );
-                        },
-                      );
-                    },
+                  : () => _openCreateVotingSheet(user),
               icon: const Icon(Icons.add),
               label: const Text('Buat Voting'),
             )
           : null,
       body: RefreshIndicator(
-        onRefresh: () => ref.read(votingControllerProvider.notifier).load(),
+        onRefresh: _reloadVotingList,
         child: Builder(
           builder: (context) {
-            if (state.isLoading && state.items.isEmpty) {
+            if (state.isLoading && _allVotingList.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final visibleItems = state.items
-                .map(_votingWithLocalState)
-                .where((item) => !_deletedVotingIds.contains(item.id))
-                .where((item) => item.status == 'AKTIF')
-                .toList(growable: false);
-
-            if (visibleItems.isEmpty) {
+            if (activeVotes.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
@@ -119,10 +117,10 @@ class _VotingPageState extends ConsumerState<VotingPage> {
             return ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount: visibleItems.length,
+              itemCount: activeVotes.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final voting = visibleItems[index];
+                final voting = activeVotes[index];
                 return _VotingCard(
                   voting: voting,
                   isCreator: canManageVoting,
@@ -136,6 +134,95 @@ class _VotingPageState extends ConsumerState<VotingPage> {
         ),
       ),
     );
+  }
+
+  DateTime _normalizedNow() => DateTime.now().toUtc();
+
+  DateTime _normalizeDate(DateTime value) {
+    return value.isUtc ? value : value.toUtc();
+  }
+
+  bool _isExpired(Voting voting, DateTime nowUtc) {
+    final endDateUtc = _normalizeDate(voting.endDate);
+    return !nowUtc.isBefore(endDateUtc);
+  }
+
+  bool _isActiveVote(Voting voting, DateTime nowUtc) {
+    return voting.status == 'AKTIF' && !_isExpired(voting, nowUtc);
+  }
+
+  bool _isCompletedVote(Voting voting, DateTime nowUtc) {
+    return voting.status == 'SELESAI' || _isExpired(voting, nowUtc);
+  }
+
+  List<Voting> _activeVotes(DateTime nowUtc) {
+    return _allVotingList
+        .where((voting) => _isActiveVote(voting, nowUtc))
+        .toList(growable: false);
+  }
+
+  List<Voting> _completedVotes(DateTime nowUtc) {
+    return _allVotingList
+        .where((voting) => _isCompletedVote(voting, nowUtc))
+        .map((voting) => voting.copyWith(status: 'SELESAI'))
+        .toList(growable: false);
+  }
+
+  Future<void> _reloadVotingList() async {
+    await ref.read(votingControllerProvider.notifier).load();
+    if (!mounted) return;
+    _mergeVotingList(ref.read(votingControllerProvider).items);
+  }
+
+  void _mergeVotingList(List<Voting> incomingVotes) {
+    if (incomingVotes.isEmpty) return;
+    setState(() {
+      for (final incoming in incomingVotes) {
+        if (_locallyDeletedVotingIds.contains(incoming.id)) continue;
+        final index = _allVotingList.indexWhere(
+          (item) => item.id == incoming.id,
+        );
+        if (index == -1) {
+          _allVotingList.add(incoming);
+        } else {
+          _allVotingList[index] = incoming;
+        }
+      }
+    });
+  }
+
+  void _upsertVoting(Voting voting) {
+    final index = _allVotingList.indexWhere((item) => item.id == voting.id);
+    if (index == -1) {
+      _allVotingList.add(voting);
+      return;
+    }
+    _allVotingList[index] = voting;
+  }
+
+  Future<void> _openCreateVotingSheet(User user) async {
+    final newVote = await showModalBottomSheet<Voting>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _CreateVotingSheet(
+          user: user,
+          minKetuaPoints: _minKetuaPoints,
+        );
+      },
+    );
+    if (newVote == null || !mounted) return;
+    setState(() {
+      final alreadyExists = _allVotingList.any(
+        (item) => item.id == newVote.id,
+      );
+      if (!alreadyExists) _upsertVoting(newVote);
+    });
+  }
+
+  void _replaceVoting(Voting updatedVoting) {
+    _upsertVoting(updatedVoting);
   }
 
   String _resolveUserRoleLabel(UserRole? role) {
@@ -161,8 +248,7 @@ class _VotingPageState extends ConsumerState<VotingPage> {
     if (picked == null) return;
 
     setState(() {
-      _endDateOverrides[voting.id] = picked;
-      _statusOverrides[voting.id] = 'AKTIF';
+      _replaceVoting(voting.copyWith(endDate: picked, status: 'AKTIF'));
     });
 
     try {
@@ -191,9 +277,11 @@ class _VotingPageState extends ConsumerState<VotingPage> {
     );
     if (confirmed != true) return;
     setState(() {
-      _statusOverrides[voting.id] = 'SELESAI';
-      _endDateOverrides[voting.id] = DateTime.now().subtract(
-        const Duration(seconds: 1),
+      _replaceVoting(
+        voting.copyWith(
+          status: 'SELESAI',
+          endDate: DateTime.now().subtract(const Duration(seconds: 1)),
+        ),
       );
     });
   }
@@ -208,7 +296,11 @@ class _VotingPageState extends ConsumerState<VotingPage> {
       isDestructive: true,
     );
     if (confirmed != true) return;
-    setState(() => _deletedVotingIds.add(voting.id));
+    setState(() {
+      _allVotingList.remove(voting);
+      _allVotingList.removeWhere((item) => item.id == voting.id);
+      _locallyDeletedVotingIds.add(voting.id);
+    });
   }
 
   Future<bool?> _showVotingActionDialog({
@@ -244,22 +336,6 @@ class _VotingPageState extends ConsumerState<VotingPage> {
     );
   }
 
-  Voting _votingWithLocalState(Voting voting) {
-    return voting.copyWith(
-      endDate: _endDateOverrides[voting.id],
-      status: _statusOverrides[voting.id],
-    );
-  }
-
-  List<Voting> _completedVotes(List<Voting> items) {
-    final now = DateTime.now();
-    return items
-        .map(_votingWithLocalState)
-        .where((item) => !_deletedVotingIds.contains(item.id))
-        .where((item) => item.status == 'SELESAI' || now.isAfter(item.endDate))
-        .map((item) => item.copyWith(status: 'SELESAI'))
-        .toList(growable: false);
-  }
 }
 
 class _CreateVotingSheet extends ConsumerStatefulWidget {
@@ -668,6 +744,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
 
     setState(() => _isSubmitting = true);
     try {
+      final createdVoting = _buildCreatedVoting(pollOptions);
       await ref
           .read(votingControllerProvider.notifier)
           .createVoting(
@@ -678,7 +755,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
             pollOptions: pollOptions,
           );
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(createdVoting);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Voting berhasil dibuat.')));
@@ -702,6 +779,28 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  Voting _buildCreatedVoting(List<String> pollOptions) {
+    final createdAt = DateTime.now().microsecondsSinceEpoch;
+    return Voting(
+      id: 'local-$createdAt',
+      type: _selectedType,
+      relatedId: _titleController.text.trim(),
+      creatorName: widget.user.name,
+      startDate: _startDate,
+      endDate: _endDate,
+      status: 'AKTIF',
+      voterIds: const {},
+      options: [
+        for (var index = 0; index < pollOptions.length; index++)
+          VoteOption(
+            id: 'local-$createdAt-option-$index',
+            title: pollOptions[index],
+            votes: 0,
+          ),
+      ],
+    );
   }
 }
 

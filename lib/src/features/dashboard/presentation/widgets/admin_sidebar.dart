@@ -144,8 +144,7 @@ class AdminSidebar extends ConsumerWidget {
                     _closeDrawerAndPush(context, '/admin/ormawas');
                   },
                 ),
-              if (user?.role == UserRole.adminFaculty)
-                _buildGamificationMenu(context),
+              if (user != null) _buildGamificationMenu(context),
               _buildMenuItem(
                 context,
                 icon: Icons.settings_outlined,
@@ -230,6 +229,8 @@ class AdminSidebar extends ConsumerWidget {
   }
 
   Widget _buildGamificationMenu(BuildContext context) {
+    final currentPath = GoRouterState.of(context).uri.path;
+    final isAdmin = user?.role == UserRole.adminFaculty;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
@@ -237,23 +238,36 @@ class AdminSidebar extends ConsumerWidget {
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         leading: const Icon(Icons.workspace_premium_outlined, size: 20),
         title: Text(
-          'Manajemen Gamifikasi',
+          isAdmin ? 'Manajemen Gamifikasi' : 'Menu Gamifikasi',
           style: Theme.of(context).textTheme.labelLarge,
         ),
         children: [
-          _buildSubMenuItem(
-            context,
-            icon: Icons.military_tech_outlined,
-            label: 'Pengaturan Lencana (Badges)',
-            onTap: () =>
-                _closeDrawerAndPush(context, '/admin/gamification/badges'),
-          ),
-          _buildSubMenuItem(
-            context,
-            icon: Icons.emoji_events_outlined,
-            label: 'Penilaian Ormawa Awards',
-            onTap: () => _closeDrawerAndPush(context, '/admin/ormawa-awards'),
-          ),
+          if (!isAdmin)
+            _buildSubMenuItem(
+              context,
+              icon: Icons.military_tech_outlined,
+              label: 'Point dan Badge',
+              selected: currentPath == '/gamification/points-badges',
+              onTap: () =>
+                  _closeDrawerAndPush(context, '/gamification/points-badges'),
+            ),
+          if (isAdmin)
+            _buildSubMenuItem(
+              context,
+              icon: Icons.military_tech_outlined,
+              label: 'Pengaturan Lencana (Badges)',
+              selected: currentPath == '/admin/gamification/badges',
+              onTap: () =>
+                  _closeDrawerAndPush(context, '/admin/gamification/badges'),
+            ),
+          if (isAdmin)
+            _buildSubMenuItem(
+              context,
+              icon: Icons.emoji_events_outlined,
+              label: 'Penilaian Ormawa Awards',
+              selected: currentPath == '/admin/ormawa-awards',
+              onTap: () => _closeDrawerAndPush(context, '/admin/ormawa-awards'),
+            ),
         ],
       ),
     );
@@ -293,12 +307,19 @@ class AdminSidebar extends ConsumerWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool selected = false,
   }) {
     return ListTile(
       dense: true,
+      selected: selected,
       contentPadding: const EdgeInsets.only(left: 8, right: 4),
       leading: Icon(icon, size: 18),
-      title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+      title: Text(
+        label,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: selected ? FontWeight.w800 : null,
+            ),
+      ),
       onTap: onTap,
     );
   }

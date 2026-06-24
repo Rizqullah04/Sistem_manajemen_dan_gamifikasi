@@ -26,6 +26,7 @@ Route::apiResource('ormawas', OrmawaController::class)->only(['index', 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::get('/profile/gamification', [AuthController::class, 'gamificationProfile']);
 
     Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 

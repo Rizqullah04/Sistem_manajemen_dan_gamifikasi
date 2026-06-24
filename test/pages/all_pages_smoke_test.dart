@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/app.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/pages/activity_list_page.dart';
@@ -257,6 +258,93 @@ Future<void> _pumpPage(
     tester.view.resetDevicePixelRatio();
   });
 
+  final router = GoRouter(
+    initialLocation: '/__test',
+    routes: [
+      GoRoute(path: '/__test', builder: (context, state) => page),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Admin route',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/ormawas',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Admin Ormawa route',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/gamification/badges',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Badge Settings route',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/ormawa-awards',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Ormawa Awards route',
+        ),
+      ),
+      GoRoute(
+        path: '/ormawa',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Ormawa route',
+        ),
+      ),
+      GoRoute(
+        path: '/ormawa/members',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Ormawa Members route',
+        ),
+      ),
+      GoRoute(
+        path: '/activities',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Activities route',
+        ),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Leaderboard route',
+        ),
+      ),
+      GoRoute(
+        path: '/gamification/points-badges',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Point & Badge route',
+        ),
+      ),
+      GoRoute(
+        path: '/voting',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Voting route',
+        ),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Profile route',
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Settings route',
+        ),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Register route',
+        ),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -311,13 +399,24 @@ Future<void> _pumpPage(
           ],
         ),
       ],
-      child: MaterialApp(home: page),
+      child: MaterialApp.router(routerConfig: router),
     ),
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
   if (settleAnimations) {
     await tester.pumpAndSettle();
+  }
+}
+
+class _SmokeRoutePlaceholder extends StatelessWidget {
+  const _SmokeRoutePlaceholder({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Center(child: Text(title)));
   }
 }
 

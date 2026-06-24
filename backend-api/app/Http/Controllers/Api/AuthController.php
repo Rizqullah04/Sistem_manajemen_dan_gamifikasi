@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\BadgeResource;
+use App\Http\Resources\PoinLogResource;
 use App\Http\Resources\UserResource;
+use App\Models\Badge;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +70,38 @@ class AuthController extends Controller
     public function profile(Request $request): JsonResponse
     {
         return $this->successResponse('Profile user berhasil diambil', new UserResource($request->user()->load(['ormawa', 'userBadges.badge'])));
+    }
+
+    public function gamificationProfile(Request $request): JsonResponse
+    {
+        $user = $request->user()->load(['userBadges.badge']);
+        $poinLogs = $user->poinLogs()
+            ->latest('tanggal')
+            ->get();
+        $earnedBadges = $user->userBadges->keyBy('id_badge');
+        $availableBadges = Badge::orderBy('minimal_poin')
+            ->get()
+            ->map(function (Badge $badge) use ($request, $earnedBadges): array {
+                $userBadge = $earnedBadges->get($badge->id);
+
+                return [
+                    ...((new BadgeResource($badge))->toArray($request)),
+                    'status' => $userBadge === null ? 'locked' : 'unlocked',
+                    'awarded_at' => $userBadge?->awarded_at?->toISOString(),
+                ];
+            })
+            ->values();
+
+        return $this->successResponse('Data gamifikasi mahasiswa berhasil diambil', [
+            'id_user' => $user->id_user,
+            'nama' => $user->nama,
+            'total_poin' => (int) ($poinLogs->isEmpty() ? $user->poin : $poinLogs->sum('poin')),
+            'poin' => (int) $user->poin,
+            'status_akun' => $user->status_akun,
+            'badges' => (new UserResource($user))->toArray($request)['badges'] ?? [],
+            'available_badges' => $availableBadges,
+            'poin_logs' => PoinLogResource::collection($poinLogs),
+        ]);
     }
 
     public function logout(Request $request): JsonResponse

@@ -861,7 +861,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 (index) {
                   final route = items[index].route;
                   final internalIndex = index > 3 ? index - 1 : index;
-                  return Padding(
+                  final item = Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _buildSidebarItem(
                       context,
@@ -876,6 +876,18 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                         }
                         setState(() => _selectedIndex = internalIndex);
                       },
+                    ),
+                  );
+
+                  if (items[index].label != 'Voting') return item;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      children: [
+                        item,
+                        _buildGamificationSidebarMenu(context),
+                      ],
                     ),
                   );
                 },
@@ -897,6 +909,65 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGamificationSidebarMenu(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        dividerColor: Colors.transparent,
+        splashColor: const Color(0xFF6D28D9).withValues(alpha: 0.08),
+        highlightColor: const Color(0xFF6D28D9).withValues(alpha: 0.08),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(42, 0, 8, 8),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          leading: const Icon(
+            Icons.emoji_events_outlined,
+            color: Color(0xFF9AA3B2),
+          ),
+          iconColor: const Color(0xFF8B5CF6),
+          collapsedIconColor: const Color(0xFF9AA3B2),
+          title: const Text(
+            'Gamifikasi',
+            style: TextStyle(
+              color: Color(0xFF9AA3B2),
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          children: [
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.military_tech_outlined,
+                color: Color(0xFF8B5CF6),
+              ),
+              title: const Text(
+                'Point & Badge',
+                style: TextStyle(
+                  color: Color(0xFF8B5CF6),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/gamification/points-badges');
+              },
+            ),
+          ],
         ),
       ),
     );

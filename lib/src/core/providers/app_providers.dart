@@ -10,6 +10,8 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/data/repo
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/domain/repositories/dashboard_repository.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/data/repositories/comment_repository_impl.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/domain/repositories/comment_repository.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/data/repositories/student_gamification_repository_impl.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/domain/repositories/student_gamification_repository.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/data/repositories/voting_repository_impl.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/repositories/voting_repository.dart';
 
@@ -47,4 +49,9 @@ final votingRepositoryProvider = Provider<VotingRepository>((ref) {
 
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   return DashboardRepositoryImpl(ref.watch(dioProvider));
+});
+
+final studentGamificationRepositoryProvider =
+    Provider<StudentGamificationRepository>((ref) {
+  return StudentGamificationRepositoryImpl(ref.watch(dioProvider));
 });
