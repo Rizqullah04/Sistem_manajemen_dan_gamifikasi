@@ -144,6 +144,16 @@ class AdminSidebar extends ConsumerWidget {
                     _closeDrawerAndPush(context, '/admin/ormawas');
                   },
                 ),
+              if (user?.role == UserRole.adminFaculty)
+                _buildMenuItem(
+                  context,
+                  icon: Icons.school_outlined,
+                  label: 'Manajemen Mahasiswa',
+                  selected: currentPath == '/admin/students',
+                  onTap: () {
+                    _closeDrawerAndPush(context, '/admin/students');
+                  },
+                ),
               if (user != null) _buildGamificationMenu(context),
               _buildMenuItem(
                 context,

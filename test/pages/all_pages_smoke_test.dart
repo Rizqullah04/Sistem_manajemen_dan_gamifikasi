@@ -15,6 +15,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/p
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/achievement_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_student_management_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/chat_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/member_dashboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/ormawa_dashboard_page.dart';
@@ -276,6 +277,12 @@ Future<void> _pumpPage(
         ),
       ),
       GoRoute(
+        path: '/admin/students',
+        builder: (context, state) => const _SmokeRoutePlaceholder(
+          title: 'Admin Students route',
+        ),
+      ),
+      GoRoute(
         path: '/admin/gamification/badges',
         builder: (context, state) => const _SmokeRoutePlaceholder(
           title: 'Badge Settings route',
@@ -387,6 +394,26 @@ Future<void> _pumpPage(
             ),
           ],
         ),
+        adminStudentsProvider.overrideWith(
+          (ref) async => const [
+            ManagedStudent(
+              id: 'u3',
+              name: 'Andi Pratama',
+              email: 'andi@example.com',
+              ormawaName: 'Himpunan Teknik Informatika',
+              points: 96,
+              status: 'aktif',
+            ),
+            ManagedStudent(
+              id: 'u4',
+              name: 'Siti Rahma',
+              email: 'siti@example.com',
+              ormawaName: 'Badan Eksekutif Mahasiswa',
+              points: 80,
+              status: 'pending',
+            ),
+          ],
+        ),
         adminBadgesProvider.overrideWith(
           (ref) async => const [
             GamificationBadge(
@@ -455,6 +482,23 @@ void main() {
       expect(find.text('Pengelolaan Data Ormawa'), findsOneWidget);
       expect(find.text('Tambah Ormawa'), findsOneWidget);
       expect(find.text('Himpunan Teknik Informatika'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('admin student management page renders global students', (
+      tester,
+    ) async {
+      await _pumpPage(
+        tester,
+        const AdminStudentManagementPage(),
+        user: _adminUser,
+      );
+
+      expect(find.text('Monitoring Mahasiswa'), findsOneWidget);
+      expect(find.text('Nama Mahasiswa'), findsOneWidget);
+      expect(find.text('Asal Ormawa'), findsOneWidget);
+      expect(find.text('Andi Pratama'), findsOneWidget);
+      expect(find.text('Badan Eksekutif Mahasiswa'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
