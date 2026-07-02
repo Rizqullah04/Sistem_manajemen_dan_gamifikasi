@@ -143,6 +143,22 @@ class _FakeVotingRepository implements VotingRepository {
     _items[index] = voting;
     return voting;
   }
+
+  @override
+  Future<Voting> updateStatus({
+    required String votingId,
+    required String status,
+  }) async {
+    final index = _items.indexWhere((item) => item.id == votingId);
+    final voting = _items[index].copyWith(status: status.toUpperCase());
+    _items[index] = voting;
+    return voting;
+  }
+
+  @override
+  Future<void> deleteVoting(String votingId) async {
+    _items.removeWhere((item) => item.id == votingId);
+  }
 }
 
 class _FakeDashboardRepository implements DashboardRepository {

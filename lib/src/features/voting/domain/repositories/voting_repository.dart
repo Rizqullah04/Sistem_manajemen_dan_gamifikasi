@@ -19,4 +19,9 @@ abstract class VotingRepository {
     required DateTime startDate,
     required DateTime endDate,
   });
+  Future<Voting> updateStatus({
+    required String votingId,
+    required String status,
+  });
+  Future<void> deleteVoting(String votingId);
 }

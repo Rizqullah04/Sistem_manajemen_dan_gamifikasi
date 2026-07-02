@@ -97,6 +97,19 @@ class VotingController extends StateNotifier<VotingState> {
         );
     await load();
   }
+
+  Future<Voting> stopVoting({required String votingId}) async {
+    final updatedVoting = await _ref
+        .read(votingRepositoryProvider)
+        .updateStatus(votingId: votingId, status: 'selesai');
+    await load();
+    return updatedVoting;
+  }
+
+  Future<void> deleteVoting({required String votingId}) async {
+    await _ref.read(votingRepositoryProvider).deleteVoting(votingId);
+    await load();
+  }
 }
 
 final votingControllerProvider =

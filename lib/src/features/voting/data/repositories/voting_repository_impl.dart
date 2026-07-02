@@ -81,6 +81,29 @@ class VotingRepositoryImpl implements VotingRepository {
     throw const AppException('Response voting tidak valid.');
   }
 
+  @override
+  Future<Voting> updateStatus({
+    required String votingId,
+    required String status,
+  }) async {
+    final response = await _safeRequest(
+      () => _dio.patch<Map<String, dynamic>>(
+        '/votings/$votingId',
+        data: {'status': status.toLowerCase()},
+      ),
+    );
+    final data = response.data?['data'];
+    if (data is Map<String, dynamic>) return _mapVoting(data);
+    throw const AppException('Response voting tidak valid.');
+  }
+
+  @override
+  Future<void> deleteVoting(String votingId) async {
+    await _safeRequest(
+      () => _dio.delete<Map<String, dynamic>>('/votings/$votingId'),
+    );
+  }
+
   Voting _mapVoting(Map<String, dynamic> json) {
     final voteDetails = json['vote_details'];
     final pollOptionsJson = json['poll_options'];

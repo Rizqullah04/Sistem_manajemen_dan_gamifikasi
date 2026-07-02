@@ -145,6 +145,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             ),
                           ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: authState.isLoading
+                                  ? null
+                                  : () => context.push('/forgot-password'),
+                              child: const Text('Lupa kata sandi?'),
+                            ),
+                          ),
                           const SizedBox(height: 20),
                           PrimaryButton(
                             label: 'Log In',

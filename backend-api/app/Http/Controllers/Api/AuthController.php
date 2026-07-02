@@ -67,6 +67,44 @@ class AuthController extends Controller
         ]);
     }
 
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+        ]);
+
+        return $this->successResponse('Email terdaftar. Gunakan OTP demo untuk reset password.', [
+            'email' => $data['email'],
+            'otp' => '1234',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+            'otp' => ['required', 'string'],
+            'password_baru' => ['required', 'string', 'min:8'],
+        ]);
+
+        if ($data['otp'] !== '1234') {
+            return $this->errorResponse('OTP tidak valid.', [
+                'errors' => [
+                    'otp' => ['OTP tidak valid.'],
+                ],
+            ], 422);
+        }
+
+        $user = User::where('email', $data['email'])->firstOrFail();
+        $user->forceFill([
+            'password' => Hash::make($data['password_baru']),
+        ])->save();
+
+        $user->tokens()->delete();
+
+        return $this->successResponse('Password berhasil diperbarui.');
+    }
+
     public function profile(Request $request): JsonResponse
     {
         return $this->successResponse('Profile user berhasil diambil', new UserResource($request->user()->load(['ormawa', 'userBadges.badge'])));

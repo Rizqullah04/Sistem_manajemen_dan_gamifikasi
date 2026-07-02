@@ -276,31 +276,55 @@ class _VotingPageState extends ConsumerState<VotingPage> {
       icon: Icons.block_rounded,
     );
     if (confirmed != true) return;
-    setState(() {
-      _replaceVoting(
-        voting.copyWith(
-          status: 'SELESAI',
-          endDate: DateTime.now().subtract(const Duration(seconds: 1)),
-        ),
+
+    try {
+      final updatedVoting = await ref
+          .read(votingControllerProvider.notifier)
+          .stopVoting(votingId: voting.id);
+      if (!mounted) return;
+      setState(() {
+        _replaceVoting(updatedVoting);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Voting berhasil dihentikan.')),
       );
-    });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    }
   }
 
   Future<void> _confirmDeleteVoting(Voting voting) async {
     final confirmed = await _showVotingActionDialog(
       title: 'Hapus Voting?',
       message:
-          'Kartu voting akan dihapus dari daftar pada sesi ini. Tindakan ini tidak dapat dibatalkan dari tampilan.',
+          'Voting akan dihapus permanen dari database. Tindakan ini tidak dapat dibatalkan.',
       confirmLabel: 'Hapus',
       icon: Icons.delete_outline_rounded,
       isDestructive: true,
     );
     if (confirmed != true) return;
-    setState(() {
-      _allVotingList.remove(voting);
-      _allVotingList.removeWhere((item) => item.id == voting.id);
-      _locallyDeletedVotingIds.add(voting.id);
-    });
+
+    try {
+      await ref
+          .read(votingControllerProvider.notifier)
+          .deleteVoting(votingId: voting.id);
+      if (!mounted) return;
+      setState(() {
+        _allVotingList.removeWhere((item) => item.id == voting.id);
+        _locallyDeletedVotingIds.add(voting.id);
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Voting berhasil dihapus.')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    }
   }
 
   Future<bool?> _showVotingActionDialog({

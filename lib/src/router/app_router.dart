@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/pages/activity_list_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/pages/login_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/pages/register_page.dart';
@@ -23,6 +24,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/login',
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/forgot-password/otp',
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! Map) return const ForgotPasswordPage();
+
+          final email = extra['email']?.toString() ?? '';
+          final otp = extra['otp']?.toString() ?? '1234';
+          if (email.isEmpty) return const ForgotPasswordPage();
+
+          return VerifyOtpPage(email: email, expectedOtp: otp);
+        },
+      ),
+      GoRoute(
+        path: '/forgot-password/reset',
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! Map) return const ForgotPasswordPage();
+
+          final email = extra['email']?.toString() ?? '';
+          final otp = extra['otp']?.toString() ?? '';
+          if (email.isEmpty || otp.isEmpty) return const ForgotPasswordPage();
+
+          return ResetPasswordPage(email: email, otp: otp);
+        },
+      ),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterPage(),
