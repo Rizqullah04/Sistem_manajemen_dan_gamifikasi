@@ -39,21 +39,15 @@ class AuthState {
 
 class AuthController extends StateNotifier<AuthState> {
   AuthController(this._loginUseCase, this._authRepository)
-      : super(const AuthState());
+    : super(const AuthState());
 
   final LoginUseCase _loginUseCase;
   final AuthRepository _authRepository;
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
     try {
-      final result = await _loginUseCase(
-        email: email,
-        password: password,
-      );
+      final result = await _loginUseCase(email: email, password: password);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result.$1);
 
@@ -63,10 +57,7 @@ class AuthController extends StateNotifier<AuthState> {
         token: result.$1,
       );
     } on AppException catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.message,
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: e.message);
     } catch (_) {
       state = state.copyWith(
         status: AuthStatus.error,
@@ -86,9 +77,22 @@ class AuthController extends StateNotifier<AuthState> {
 
   void updateProfile({required String name}) {
     if (state.user == null) return;
-    state = state.copyWith(
-      user: state.user!.copyWith(name: name),
-    );
+    state = state.copyWith(user: state.user!.copyWith(name: name));
+  }
+
+  Future<void> refreshProfile() async {
+    if (state.user == null) return;
+    try {
+      final user = await _authRepository.profile();
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        user: user,
+        token: state.token,
+        errorMessage: null,
+      );
+    } on AppException catch (e) {
+      state = state.copyWith(errorMessage: e.message);
+    }
   }
 
   Future<void> logout() async {

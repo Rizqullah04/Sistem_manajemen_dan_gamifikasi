@@ -161,11 +161,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
         final notifications =
             realtimeSummaryAsync.valueOrNull?.notifications ??
             summary.notifications;
-        final unreadNotificationCount = _unreadNotificationCount(
-          notifications,
-        );
-        final isCompactDashboard =
-            settings?.compactDashboardEnabled ?? false;
+        final unreadNotificationCount = _unreadNotificationCount(notifications);
+        final isCompactDashboard = settings?.compactDashboardEnabled ?? false;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -269,9 +266,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: _displayBadges(user)
-                      .map((badge) => BadgeWidget(label: badge))
-                      .toList(),
+                  children: _displayBadges(
+                    user,
+                  ).map((badge) => BadgeWidget(label: badge)).toList(),
                 ),
               ],
               const SizedBox(height: 40),
@@ -481,7 +478,11 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
               const SizedBox(height: 10),
               const Row(
                 children: [
-                  Icon(Icons.touch_app_rounded, size: 15, color: Colors.white38),
+                  Icon(
+                    Icons.touch_app_rounded,
+                    size: 15,
+                    color: Colors.white38,
+                  ),
                   SizedBox(width: 6),
                   Text(
                     'Ketuk untuk detail dan diskusi',
@@ -638,14 +639,15 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                                     ClipboardData(text: documentation),
                                   );
                                   if (!sheetContext.mounted) return;
-                                  ScaffoldMessenger.of(sheetContext)
-                                      .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Link dokumentasi disalin.',
-                                          ),
-                                        ),
-                                      );
+                                  ScaffoldMessenger.of(
+                                    sheetContext,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Link dokumentasi disalin.',
+                                      ),
+                                    ),
+                                  );
                                 },
                                 icon: const Icon(Icons.copy_rounded),
                                 color: Colors.white,
@@ -674,12 +676,10 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                   const SizedBox(height: 10),
                   Theme(
                     data: Theme.of(context).copyWith(
-                      textTheme: Theme.of(context)
-                          .textTheme
-                          .apply(
-                            bodyColor: Colors.white,
-                            displayColor: Colors.white,
-                          ),
+                      textTheme: Theme.of(context).textTheme.apply(
+                        bodyColor: Colors.white,
+                        displayColor: Colors.white,
+                      ),
                       inputDecorationTheme: const InputDecorationTheme(
                         filled: true,
                         fillColor: Color(0xFF17122D),
@@ -728,7 +728,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     final profile = _profileData ?? _createInitialProfileData(user);
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final activities = ref.watch(activityControllerProvider);
-    final totalPoints = summaryAsync.valueOrNull?.totalPoints ?? user.points;
+    final totalPoints =
+        summaryAsync.valueOrNull?.totalPoints ?? user.effectivePoints;
     final globalRank = summaryAsync.valueOrNull?.currentRanking ?? 12;
     final activityCount =
         summaryAsync.valueOrNull?.totalActivities ?? activities.items.length;
@@ -789,14 +790,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   }
 
   Widget _buildSidebar(BuildContext context, User user) {
-    const List<
-      ({
-        IconData icon,
-        String label,
-        String? route,
-        int? tabIndex,
-      })
-    > items = [
+    const List<({IconData icon, String label, String? route, int? tabIndex})>
+    items = [
       (icon: Icons.home_rounded, label: 'Home', route: null, tabIndex: 0),
       (
         icon: Icons.event_note_outlined,
@@ -810,12 +805,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
         route: '/voting',
         tabIndex: null,
       ),
-      (
-        icon: Icons.person_rounded,
-        label: 'Profile',
-        route: null,
-        tabIndex: 3,
-      ),
+      (icon: Icons.person_rounded, label: 'Profile', route: null, tabIndex: 3),
       (
         icon: Icons.settings_outlined,
         label: 'Pengaturan',
@@ -882,46 +872,43 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              ...List.generate(
-                items.length,
-                (index) {
-                  final route = items[index].route;
-                  final tabIndex = items[index].tabIndex;
-                  final item = Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _buildSidebarItem(
-                      context,
-                      icon: items[index].icon,
-                      label: items[index].label,
-                      isActive: tabIndex != null && _selectedIndex == tabIndex,
-                      onTap: () {
-                        Navigator.pop(context);
-                        if (route != null) {
-                          context.push(route);
-                          return;
-                        }
-                        if (tabIndex == null) return;
-                        setState(() => _selectedIndex = tabIndex);
-                      },
-                    ),
-                  );
+              ...List.generate(items.length, (index) {
+                final route = items[index].route;
+                final tabIndex = items[index].tabIndex;
+                final item = Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildSidebarItem(
+                    context,
+                    icon: items[index].icon,
+                    label: items[index].label,
+                    isActive: tabIndex != null && _selectedIndex == tabIndex,
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (route != null) {
+                        context.push(route);
+                        return;
+                      }
+                      if (tabIndex == null) return;
+                      setState(() => _selectedIndex = tabIndex);
+                    },
+                  ),
+                );
 
-                  if (items[index].label != 'Voting') return item;
+                if (items[index].label != 'Voting') return item;
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Column(
-                      children: [
-                        item,
-                        _buildGamificationSidebarMenu(
-                          context,
-                          isRankActive: _selectedIndex == 1,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    children: [
+                      item,
+                      _buildGamificationSidebarMenu(
+                        context,
+                        isRankActive: _selectedIndex == 1,
+                      ),
+                    ],
+                  ),
+                );
+              }),
               const Spacer(),
               OutlinedButton.icon(
                 onPressed: () {
@@ -1499,6 +1486,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
         label: entry.value,
         icon: icons[index % icons.length],
         color: colors[index % colors.length],
+        isLocked: false,
       );
     }).toList();
 
@@ -1629,8 +1617,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   String _remainingText(int points) {
     if (points <= 100) return '${100 - points} pts remaining until Silver Rank';
     if (points <= 300) return '${300 - points} pts remaining until Gold Rank';
-    if (points <= 700)
+    if (points <= 700) {
       return '${700 - points} pts remaining until Platinum Rank';
+    }
     return 'You have reached Platinum Rank';
   }
 

@@ -15,6 +15,7 @@ class PoinLog extends Model
         'id_ormawa',
         'sumber',
         'referensi_id',
+        'idempotency_key',
         'poin',
         'keterangan',
         'tanggal',

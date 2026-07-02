@@ -3,6 +3,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dar
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
 
 class VotingState {
@@ -80,6 +81,7 @@ class VotingController extends StateNotifier<VotingState> {
     await _ref
         .read(votingRepositoryProvider)
         .castVote(votingId: votingId, optionId: optionId, userId: user.id);
+    await refreshPointDependentState(_ref);
     await load();
   }
 
@@ -109,6 +111,14 @@ class VotingController extends StateNotifier<VotingState> {
   Future<void> deleteVoting({required String votingId}) async {
     await _ref.read(votingRepositoryProvider).deleteVoting(votingId);
     await load();
+  }
+
+  Future<int> clearCompletedVotingLogs() async {
+    final deletedCount = await _ref
+        .read(votingRepositoryProvider)
+        .clearCompletedVotingLogs();
+    await load();
+    return deletedCount;
   }
 }
 

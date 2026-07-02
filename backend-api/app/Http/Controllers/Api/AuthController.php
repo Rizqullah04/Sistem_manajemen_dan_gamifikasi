@@ -9,6 +9,7 @@ use App\Http\Resources\BadgeResource;
 use App\Http\Resources\PoinLogResource;
 use App\Http\Resources\UserResource;
 use App\Models\Badge;
+use App\Models\Period;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -113,7 +114,9 @@ class AuthController extends Controller
     public function gamificationProfile(Request $request): JsonResponse
     {
         $user = $request->user()->load(['userBadges.badge']);
+        $activePeriodId = Period::where('status', 'active')->latest('starts_on')->value('id_period');
         $poinLogs = $user->poinLogs()
+            ->when($activePeriodId, fn ($query, int $periodId) => $query->where('id_period', $periodId))
             ->latest('tanggal')
             ->get();
         $earnedBadges = $user->userBadges->keyBy('id_badge');
@@ -133,7 +136,7 @@ class AuthController extends Controller
         return $this->successResponse('Data gamifikasi mahasiswa berhasil diambil', [
             'id_user' => $user->id_user,
             'nama' => $user->nama,
-            'total_poin' => (int) ($poinLogs->isEmpty() ? $user->poin : $poinLogs->sum('poin')),
+            'total_poin' => (int) $user->poin,
             'poin' => (int) $user->poin,
             'status_akun' => $user->status_akun,
             'badges' => (new UserResource($user))->toArray($request)['badges'] ?? [],

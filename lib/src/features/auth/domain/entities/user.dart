@@ -9,6 +9,7 @@ class User {
     required this.points,
     required this.level,
     this.ormawaId,
+    this.ormawaPoints,
     this.badges = const [],
   });
 
@@ -19,7 +20,13 @@ class User {
   final int points;
   final int level;
   final String? ormawaId;
+  final int? ormawaPoints;
   final List<String> badges;
+
+  int get effectivePoints {
+    if (role == UserRole.ormawaAccount) return ormawaPoints ?? points;
+    return points;
+  }
 
   User copyWith({
     String? id,
@@ -29,6 +36,7 @@ class User {
     int? points,
     int? level,
     String? ormawaId,
+    int? ormawaPoints,
     List<String>? badges,
   }) {
     return User(
@@ -39,6 +47,7 @@ class User {
       points: points ?? this.points,
       level: level ?? this.level,
       ormawaId: ormawaId ?? this.ormawaId,
+      ormawaPoints: ormawaPoints ?? this.ormawaPoints,
       badges: badges ?? this.badges,
     );
   }

@@ -73,21 +73,27 @@ class DashboardRepositoryImpl implements DashboardRepository {
     final pendingMembers = ormawaMembers
         .where((member) => member['status_akun']?.toString() == 'pending')
         .toList();
-    final ranking = leaderboard.indexWhere((entry) {
-      if (user.role == UserRole.ormawaAccount) return entry.id == user.ormawaId;
-      return entry.id == user.id;
-    }) + 1;
+    final ranking =
+        leaderboard.indexWhere((entry) {
+          if (user.role == UserRole.ormawaAccount) {
+            return entry.id == user.ormawaId;
+          }
+          return entry.id == user.id;
+        }) +
+        1;
 
     return DashboardSummary(
       totalActivities: activityList.length,
-      totalPoints: user.points,
+      totalPoints: user.effectivePoints,
       currentRanking: ranking == 0 ? 1 : ranking,
       monthlyActivities: _monthlyActivityChart(activityList),
       pendingMemberCount: pendingMembers.length,
       notifications: [
         if (pendingMembers.isNotEmpty)
           '${pendingMembers.length} anggota baru menunggu verifikasi Ormawa.',
-        ...pendingMembers.take(3).map(
+        ...pendingMembers
+            .take(3)
+            .map(
               (member) =>
                   '${member['nama'] ?? 'Anggota baru'} memilih Ormawa Anda saat registrasi.',
             ),
@@ -97,10 +103,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   Future<List<LeaderboardEntry>> _fetchLeaderboard(String type) async {
-    final response = await _safeRequest(() => _dio.get<Map<String, dynamic>>(
-          '/leaderboard',
-          queryParameters: {'tipe': type},
-        ));
+    final response = await _safeRequest(
+      () => _dio.get<Map<String, dynamic>>(
+        '/leaderboard',
+        queryParameters: {'tipe': type},
+      ),
+    );
     final data = response.data?['data'];
     if (data is! List) {
       throw const AppException('Response leaderboard tidak valid.');
@@ -112,9 +120,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   Future<List<Map<String, dynamic>>> _fetchOrmawaMembers() async {
-    final response = await _safeRequest(() => _dio.get<Map<String, dynamic>>(
-          '/ormawa/members',
-        ));
+    final response = await _safeRequest(
+      () => _dio.get<Map<String, dynamic>>('/ormawa/members'),
+    );
     final data = response.data?['data'];
     if (data is! List) return const <Map<String, dynamic>>[];
     return data.whereType<Map<String, dynamic>>().toList();
@@ -149,11 +157,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
   ) {
     final sortedActivities = [...activities]
       ..sort((a, b) {
-        final aDate = DateTime.tryParse(
+        final aDate =
+            DateTime.tryParse(
               a['created_at']?.toString() ?? a['tanggal']?.toString() ?? '',
             ) ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = DateTime.tryParse(
+        final bDate =
+            DateTime.tryParse(
               b['created_at']?.toString() ?? b['tanggal']?.toString() ?? '',
             ) ??
             DateTime.fromMillisecondsSinceEpoch(0);

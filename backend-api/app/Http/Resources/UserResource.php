@@ -17,6 +17,7 @@ class UserResource extends JsonResource
             'role' => $this->role,
             'status_akun' => $this->status_akun,
             'id_ormawa' => $this->id_ormawa,
+            'ormawa_total_poin' => $this->whenLoaded('ormawa', fn () => (int) $this->ormawa?->total_poin),
             'ormawa' => $this->whenLoaded('ormawa', fn () => new OrmawaResource($this->ormawa)),
             'badges' => $this->whenLoaded('userBadges', fn () => $this->userBadges
                 ->filter(fn ($userBadge) => $userBadge->badge !== null)

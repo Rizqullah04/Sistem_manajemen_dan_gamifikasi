@@ -8,10 +8,16 @@ enum LeaderboardFilter { monthly, semester, allTime }
 
 enum LeaderboardType { individu, ormawa }
 
-final leaderboardFilterProvider = StateProvider<LeaderboardFilter>((ref) => LeaderboardFilter.monthly);
-final leaderboardTypeProvider = StateProvider<LeaderboardType>((ref) => LeaderboardType.individu);
+final leaderboardFilterProvider = StateProvider<LeaderboardFilter>(
+  (ref) => LeaderboardFilter.monthly,
+);
+final leaderboardTypeProvider = StateProvider<LeaderboardType>(
+  (ref) => LeaderboardType.individu,
+);
 
-final _leaderboardEntriesProvider = FutureProvider<List<LeaderboardEntry>>((ref) {
+final _leaderboardEntriesProvider = FutureProvider<List<LeaderboardEntry>>((
+  ref,
+) {
   final type = ref.watch(leaderboardTypeProvider);
   ref.watch(leaderboardFilterProvider);
   final repository = ref.watch(dashboardRepositoryProvider);
@@ -25,7 +31,9 @@ final isLoadingProvider = Provider<bool>((ref) {
 });
 
 final usersProvider = Provider<List<UserModel>>((ref) {
-  final entries = ref.watch(_leaderboardEntriesProvider).valueOrNull ?? const <LeaderboardEntry>[];
+  final entries =
+      ref.watch(_leaderboardEntriesProvider).valueOrNull ??
+      const <LeaderboardEntry>[];
   return entries.map(_toUserModel).toList()
     ..sort((a, b) => a.rank.compareTo(b.rank));
 });
@@ -46,7 +54,7 @@ final currentUserProvider = Provider<UserModel>((ref) {
     id: authUser?.id ?? 'current',
     name: authUser?.name ?? 'User',
     avatar: '',
-    points: authUser?.points ?? 0,
+    points: authUser?.effectivePoints ?? 0,
     rank: 0,
     ormawa: authUser?.ormawaId ?? '',
   );

@@ -24,4 +24,5 @@ abstract class VotingRepository {
     required String status,
   });
   Future<void> deleteVoting(String votingId);
+  Future<int> clearCompletedVotingLogs();
 }

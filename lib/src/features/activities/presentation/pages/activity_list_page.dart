@@ -217,9 +217,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                             hasDocumentation
                                 ? Icons.check_circle_rounded
                                 : Icons.link_rounded,
-                            color: hasDocumentation
-                                ? Colors.greenAccent
-                                : null,
+                            color: hasDocumentation ? Colors.greenAccent : null,
                           ),
                           suffixIcon: IconButton(
                             tooltip: 'Lampirkan dokumentasi',
@@ -613,12 +611,18 @@ class _ActivityCard extends ConsumerWidget {
                       ),
                       OutlinedButton.icon(
                         onPressed: () async {
+                          final note = await _showVerificationNoteDialog(
+                            context,
+                            title: 'Tolak Kegiatan',
+                            initialNote: 'Perlu perbaikan data administrasi.',
+                          );
+                          if (note == null) return;
                           await ref
                               .read(activityControllerProvider.notifier)
                               .verify(
                                 activityId: activity.id,
                                 status: ActivityStatus.rejected,
-                                note: 'Perlu perbaikan data administrasi.',
+                                note: note,
                               );
                         },
                         icon: const Icon(Icons.cancel_outlined),
@@ -674,5 +678,59 @@ class _ActivityCard extends ConsumerWidget {
         context,
       ).showSnackBar(const SnackBar(content: Text('Kegiatan gagal dihapus.')));
     }
+  }
+
+  Future<String?> _showVerificationNoteDialog(
+    BuildContext context, {
+    required String title,
+    required String initialNote,
+  }) async {
+    final controller = TextEditingController(text: initialNote);
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 5,
+            maxLength: 500,
+            decoration: const InputDecoration(
+              labelText: 'Catatan untuk Ormawa',
+              hintText:
+                  'Tuliskan alasan penolakan atau revisi yang diperlukan.',
+              alignLabelWithHint: true,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Catatan penolakan wajib diisi.';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(context, controller.text.trim());
+            },
+            child: const Text('Kirim Catatan'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    return result;
   }
 }

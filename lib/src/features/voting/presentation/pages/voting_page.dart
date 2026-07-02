@@ -71,6 +71,9 @@ class _VotingPageState extends ConsumerState<VotingPage> {
                 MaterialPageRoute<void>(
                   builder: (_) => VotingLogPage(
                     completedVotes: completedVotes,
+                    canClearLogs: user?.role == UserRole.adminFaculty,
+                    onDeleteVoting: _deleteCompletedVotingLog,
+                    onClearCompletedLogs: _clearCompletedVotingLogs,
                   ),
                 ),
               );
@@ -206,17 +209,12 @@ class _VotingPageState extends ConsumerState<VotingPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return _CreateVotingSheet(
-          user: user,
-          minKetuaPoints: _minKetuaPoints,
-        );
+        return _CreateVotingSheet(user: user, minKetuaPoints: _minKetuaPoints);
       },
     );
     if (newVote == null || !mounted) return;
     setState(() {
-      final alreadyExists = _allVotingList.any(
-        (item) => item.id == newVote.id,
-      );
+      final alreadyExists = _allVotingList.any((item) => item.id == newVote.id);
       if (!alreadyExists) _upsertVoting(newVote);
     });
   }
@@ -261,9 +259,9 @@ class _VotingPageState extends ConsumerState<VotingPage> {
           );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_errorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
     }
   }
 
@@ -327,6 +325,44 @@ class _VotingPageState extends ConsumerState<VotingPage> {
     }
   }
 
+  Future<void> _deleteCompletedVotingLog(Voting voting) async {
+    await ref
+        .read(votingControllerProvider.notifier)
+        .deleteVoting(votingId: voting.id);
+    if (!mounted) return;
+    setState(() {
+      _allVotingList.removeWhere((item) => item.id == voting.id);
+      _locallyDeletedVotingIds.add(voting.id);
+    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Log voting berhasil dihapus.')));
+  }
+
+  Future<int> _clearCompletedVotingLogs() async {
+    final completedIds = _completedVotes(_normalizedNow())
+        .map((voting) => voting.id)
+        .toSet();
+    final deletedCount = await ref
+        .read(votingControllerProvider.notifier)
+        .clearCompletedVotingLogs();
+    if (!mounted) return deletedCount;
+    setState(() {
+      _allVotingList.removeWhere((item) => completedIds.contains(item.id));
+      _locallyDeletedVotingIds.addAll(completedIds);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          deletedCount == 0
+              ? 'Tidak ada log voting selesai yang perlu dibersihkan.'
+              : '$deletedCount log voting selesai berhasil dibersihkan.',
+        ),
+      ),
+    );
+    return deletedCount;
+  }
+
   Future<bool?> _showVotingActionDialog({
     required String title,
     required String message,
@@ -359,7 +395,6 @@ class _VotingPageState extends ConsumerState<VotingPage> {
       },
     );
   }
-
 }
 
 class _CreateVotingSheet extends ConsumerStatefulWidget {
@@ -406,7 +441,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
   Widget build(BuildContext context) {
     final canCreateKetua =
         widget.user.role == UserRole.adminFaculty ||
-        widget.user.points >= widget.minKetuaPoints;
+        widget.user.effectivePoints >= widget.minKetuaPoints;
     final pollOptions = _pollOptions;
     final canSubmit =
         !_isSubmitting &&
@@ -484,7 +519,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                   ),
                   const SizedBox(height: 18),
                   _VotingPointSummaryCard(
-                    userPoints: widget.user.points,
+                    userPoints: widget.user.effectivePoints,
                     minKetuaPoints: widget.minKetuaPoints,
                     canCreateKetua: canCreateKetua,
                   ),
@@ -579,14 +614,14 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                                         ),
                                         child: CircleAvatar(
                                           radius: 15,
-                                          backgroundImage:
-                                              MemoryImage(imageBytes),
+                                          backgroundImage: MemoryImage(
+                                            imageBytes,
+                                          ),
                                         ),
                                       ),
                                     IconButton(
                                       tooltip: 'Pilih gambar opsi',
-                                      onPressed: () =>
-                                          _pickOptionImage(index),
+                                      onPressed: () => _pickOptionImage(index),
                                       icon: Icon(
                                         imageBytes == null
                                             ? Icons.add_photo_alternate_outlined
@@ -750,7 +785,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
     }
 
     if (_selectedType == VotingType.ketua &&
-        widget.user.points < widget.minKetuaPoints) {
+        widget.user.effectivePoints < widget.minKetuaPoints) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Poin ormawa belum mencukupi untuk voting ketua.'),
@@ -879,7 +914,9 @@ class _VotingPointSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1630).withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+        ),
       ),
       child: Wrap(
         spacing: 8,
@@ -938,16 +975,16 @@ class _PointMetricChip extends StatelessWidget {
           Text(
             '$label ',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           Text(
             value,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -990,12 +1027,11 @@ class _OrmawaCreatorBadge extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurfaceVariant
-                      .withValues(alpha: 0.86),
-                  fontWeight: FontWeight.w700,
-                ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.86),
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         Container(
@@ -1007,9 +1043,9 @@ class _OrmawaCreatorBadge extends StatelessWidget {
           child: Text(
             'Pembuat',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
@@ -1134,7 +1170,8 @@ class _VotingCard extends ConsumerWidget {
                 return _VoteOptionTile(
                   option: option,
                   ratio: ratio,
-                  canTap: voting.isActive && !hasVoted && user != null,
+                  canTap:
+                      voting.isActive && !hasVoted && user != null && canUseVote,
                   canVote: canUseVote,
                   ormawaName: creatorOrmawaName,
                   onVote: () async {
@@ -1212,11 +1249,7 @@ class _VotingCardMenu extends StatelessWidget {
 }
 
 class _VotingMenuItem extends StatelessWidget {
-  const _VotingMenuItem({
-    required this.icon,
-    required this.label,
-    this.color,
-  });
+  const _VotingMenuItem({required this.icon, required this.label, this.color});
 
   final IconData icon;
   final String label;
@@ -1249,9 +1282,9 @@ class _FinishedVotingBadge extends StatelessWidget {
       child: Text(
         'Selesai',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.error,
-              fontWeight: FontWeight.w900,
-            ),
+          color: Theme.of(context).colorScheme.error,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -1283,13 +1316,14 @@ class _VoteOptionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest
-              .withValues(alpha: 0.55),
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant.withValues(
-                  alpha: 0.5,
-                ),
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         child: Row(
@@ -1374,9 +1408,9 @@ class _LivePreviewBadge extends StatelessWidget {
           Text(
             'Live Preview',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -1453,15 +1487,16 @@ class _VoteActionButtonState extends State<_VoteActionButton>
       vsync: this,
       duration: const Duration(milliseconds: 420),
     );
-    _shakeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 0, end: -8), weight: 1),
-      TweenSequenceItem(tween: Tween<double>(begin: -8, end: 8), weight: 2),
-      TweenSequenceItem(tween: Tween<double>(begin: 8, end: -6), weight: 2),
-      TweenSequenceItem(tween: Tween<double>(begin: -6, end: 6), weight: 2),
-      TweenSequenceItem(tween: Tween<double>(begin: 6, end: 0), weight: 1),
-    ]).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
-    );
+    _shakeAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween<double>(begin: 0, end: -8), weight: 1),
+          TweenSequenceItem(tween: Tween<double>(begin: -8, end: 8), weight: 2),
+          TweenSequenceItem(tween: Tween<double>(begin: 8, end: -6), weight: 2),
+          TweenSequenceItem(tween: Tween<double>(begin: -6, end: 6), weight: 2),
+          TweenSequenceItem(tween: Tween<double>(begin: 6, end: 0), weight: 1),
+        ]).animate(
+          CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
+        );
   }
 
   @override
@@ -1534,8 +1569,9 @@ void _showMemberOnlySheet(BuildContext context, String ormawaName) {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor:
-                    Theme.of(sheetContext).colorScheme.primaryContainer,
+                backgroundColor: Theme.of(
+                  sheetContext,
+                ).colorScheme.primaryContainer,
                 child: Icon(
                   Icons.how_to_reg_rounded,
                   color: Theme.of(sheetContext).colorScheme.onPrimaryContainer,
@@ -1544,9 +1580,9 @@ void _showMemberOnlySheet(BuildContext context, String ormawaName) {
               const SizedBox(height: 16),
               Text(
                 'Fitur ini khusus Anggota',
-                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(

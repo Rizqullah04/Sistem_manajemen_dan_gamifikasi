@@ -14,6 +14,7 @@ use App\Services\PoinService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class KegiatanController extends Controller
 {
@@ -61,7 +62,7 @@ class KegiatanController extends Controller
         );
     }
 
-    public function update(UpdateKegiatanRequest $request, Kegiatan $kegiatan): JsonResponse
+    public function update(UpdateKegiatanRequest $request, Kegiatan $kegiatan, PoinService $poinService): JsonResponse
     {
         if (! $this->userDapatMengaksesOrmawa($request, $kegiatan->id_ormawa)) {
             return $this->errorResponse('Anda tidak memiliki akses ke kegiatan ini.', status: 403);
@@ -73,11 +74,15 @@ class KegiatanController extends Controller
             return $this->errorResponse('Anda tidak memiliki akses ke ormawa tujuan.', status: 403);
         }
 
+        $statusLama = $kegiatan->status;
         if ($kegiatan->status !== Kegiatan::STATUS_PENDING) {
             $data['status'] = Kegiatan::STATUS_PENDING;
         }
 
         $kegiatan->update($data);
+        if ($statusLama === Kegiatan::STATUS_VALID && $kegiatan->status !== Kegiatan::STATUS_VALID) {
+            $poinService->batalkanPoinOrmawa($kegiatan->ormawa, 'kegiatan', $kegiatan->id_kegiatan);
+        }
         $kegiatan->ormawa->recalculateTotalPoin();
 
         return $this->successResponse(
@@ -86,14 +91,19 @@ class KegiatanController extends Controller
         );
     }
 
-    public function destroy(Kegiatan $kegiatan): JsonResponse
+    public function destroy(Kegiatan $kegiatan, PoinService $poinService): JsonResponse
     {
         if (! $this->userDapatMengaksesOrmawa(request(), $kegiatan->id_ormawa)) {
             return $this->errorResponse('Anda tidak memiliki akses ke kegiatan ini.', status: 403);
         }
 
         $ormawa = $kegiatan->ormawa;
+        $referensiIds = [
+            $kegiatan->id_kegiatan,
+            ...$kegiatan->dokumentasiKegiatans()->pluck('id_dokumentasi')->all(),
+        ];
 
+        $poinService->batalkanPoinOrmawa($ormawa, 'kegiatan', $referensiIds);
         $kegiatan->delete();
         $ormawa->recalculateTotalPoin();
 
@@ -103,24 +113,33 @@ class KegiatanController extends Controller
     public function verifikasi(VerifikasiKegiatanRequest $request, Kegiatan $kegiatan, PoinService $poinService): JsonResponse
     {
         $data = $request->validated();
-        $statusLama = $kegiatan->status;
-        $kegiatan->update([
-            'status' => $data['status'],
-        ]);
+        $kegiatan = DB::transaction(function () use ($request, $kegiatan, $data, $poinService): Kegiatan {
+            $lockedKegiatan = Kegiatan::whereKey($kegiatan->id_kegiatan)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $statusLama = $lockedKegiatan->status;
+            $lockedKegiatan->update([
+                'status' => $data['status'],
+            ]);
 
-        Verifikasi::create([
-            'id_kegiatan' => $kegiatan->id_kegiatan,
-            'id_admin' => $request->user()->id_user,
-            'catatan' => $data['catatan'] ?? null,
-            'status' => $data['status'],
-            'tanggal_verifikasi' => now(),
-        ]);
+            Verifikasi::create([
+                'id_kegiatan' => $lockedKegiatan->id_kegiatan,
+                'id_admin' => $request->user()->id_user,
+                'catatan' => $data['catatan'] ?? null,
+                'status' => $data['status'],
+                'tanggal_verifikasi' => now(),
+            ]);
 
-        if ($data['status'] === Kegiatan::STATUS_VALID && $statusLama !== Kegiatan::STATUS_VALID) {
-            $poinService->tambahPoinOrmawa($kegiatan->ormawa, 'kegiatan', $kegiatan->id_kegiatan, $kegiatan->poin_kegiatan, 'Kegiatan valid');
-        } else {
-            $kegiatan->ormawa->recalculateTotalPoin();
-        }
+            if ($data['status'] === Kegiatan::STATUS_VALID && $statusLama !== Kegiatan::STATUS_VALID) {
+                $poinService->tambahPoinOrmawa($lockedKegiatan->ormawa, 'kegiatan', $lockedKegiatan->id_kegiatan, $lockedKegiatan->poin_kegiatan, 'Kegiatan valid');
+            } elseif ($statusLama === Kegiatan::STATUS_VALID && $data['status'] !== Kegiatan::STATUS_VALID) {
+                $poinService->batalkanPoinOrmawa($lockedKegiatan->ormawa, 'kegiatan', $lockedKegiatan->id_kegiatan);
+            } else {
+                $lockedKegiatan->ormawa->recalculateTotalPoin();
+            }
+
+            return $lockedKegiatan;
+        });
 
         return $this->successResponse(
             'Kegiatan berhasil diverifikasi',

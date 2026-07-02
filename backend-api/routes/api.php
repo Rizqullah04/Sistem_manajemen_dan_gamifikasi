@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/poin-logs', [PoinLogController::class, 'index']);
         Route::patch('/ormawas/{ormawa}/recalculate-poin', [PoinLogController::class, 'recalculateOrmawa']);
         Route::patch('/kegiatans/{kegiatan}/verifikasi', [KegiatanController::class, 'verifikasi']);
+        Route::delete('/votings/completed-logs', [VotingController::class, 'clearCompletedLogs']);
     });
 
     Route::middleware('role:admin,ormawa')->group(function () {

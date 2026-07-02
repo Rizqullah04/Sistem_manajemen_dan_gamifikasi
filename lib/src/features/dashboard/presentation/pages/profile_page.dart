@@ -138,9 +138,9 @@ class _ProfileHero extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Wrap(
@@ -202,10 +202,7 @@ class _AccountInfoCard extends StatelessWidget {
 }
 
 class _ProfileSummaryCard extends StatelessWidget {
-  const _ProfileSummaryCard({
-    required this.user,
-    required this.membersAsync,
-  });
+  const _ProfileSummaryCard({required this.user, required this.membersAsync});
 
   final User user;
   final AsyncValue<List<OrmawaMember>>? membersAsync;
@@ -221,7 +218,7 @@ class _ProfileSummaryCard extends StatelessWidget {
     final items = [
       _MetricData(
         label: 'Poin',
-        value: '${user.points}',
+        value: '${user.effectivePoints}',
         icon: Icons.stars_outlined,
       ),
       _MetricData(
@@ -266,10 +263,7 @@ class _ProfileSummaryCard extends StatelessWidget {
 }
 
 class _QuickActionsCard extends StatelessWidget {
-  const _QuickActionsCard({
-    required this.user,
-    required this.onLogout,
-  });
+  const _QuickActionsCard({required this.user, required this.onLogout});
 
   final User user;
   final VoidCallback onLogout;
@@ -324,9 +318,9 @@ class _SectionTitle extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
       ],
     );
@@ -351,16 +345,16 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -390,9 +384,9 @@ class _MetricTile extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             data.value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 2),
           Text(data.label, style: Theme.of(context).textTheme.labelMedium),
@@ -415,7 +409,10 @@ class _MetricData {
 }
 
 String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty);
   if (parts.isEmpty) return 'U';
   return parts.take(2).map((part) => part[0].toUpperCase()).join();
 }

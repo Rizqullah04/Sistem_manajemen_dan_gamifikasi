@@ -8,5 +8,6 @@ abstract class AuthRepository {
 
   User? get currentUser;
   String? get token;
+  Future<User> profile();
   Future<void> logout();
 }

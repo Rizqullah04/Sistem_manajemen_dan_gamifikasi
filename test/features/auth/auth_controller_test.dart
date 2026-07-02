@@ -42,6 +42,15 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> profile() async {
+    final user = _user;
+    if (user == null) {
+      throw const AppException('not authenticated');
+    }
+    return user;
+  }
+
+  @override
   Future<void> logout() async {
     _token = null;
     _user = null;
@@ -66,11 +75,11 @@ void main() {
   group('AuthController', () {
     test('login success updates authenticated state', () async {
       final repository = FakeAuthRepository();
-      final controller = AuthController(
-        LoginUseCase(repository),
-        repository,
+      final controller = AuthController(LoginUseCase(repository), repository);
+      await controller.login(
+        email: 'anggota@example.com',
+        password: 'member123',
       );
-      await controller.login(email: 'anggota@example.com', password: 'member123');
       expect(controller.state.status, AuthStatus.authenticated);
       expect(controller.state.user?.name, 'Tester');
       expect(controller.state.token, isNotNull);
@@ -78,10 +87,7 @@ void main() {
 
     test('login failure updates error state', () async {
       final repository = FakeAuthRepository(shouldFail: true);
-      final controller = AuthController(
-        LoginUseCase(repository),
-        repository,
-      );
+      final controller = AuthController(LoginUseCase(repository), repository);
       await controller.login(email: 'anggota@example.com', password: 'wrong');
       expect(controller.state.status, AuthStatus.error);
       expect(controller.state.errorMessage, isNotNull);

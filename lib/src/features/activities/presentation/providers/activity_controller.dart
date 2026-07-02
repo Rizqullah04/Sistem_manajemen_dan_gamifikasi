@@ -3,6 +3,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dar
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 
 class ActivityState {
   const ActivityState({
@@ -144,6 +145,7 @@ class ActivityController extends StateNotifier<ActivityState> {
     await _ref
         .read(activityRepositoryProvider)
         .verifyActivity(activityId: activityId, status: status, note: note);
+    await refreshPointDependentState(_ref);
     await loadInitial();
   }
 }

@@ -7,4 +7,5 @@ abstract class CommentRepository {
     required String userId,
     required String content,
   });
+  Future<void> deleteComment(String commentId);
 }

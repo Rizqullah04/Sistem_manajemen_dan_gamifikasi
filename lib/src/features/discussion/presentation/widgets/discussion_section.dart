@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/domain/entities/comment.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/presentation/providers/comment_providers.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 
 class DiscussionSection extends ConsumerStatefulWidget {
   const DiscussionSection({required this.activityId, super.key});
@@ -28,6 +31,7 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
   @override
   Widget build(BuildContext context) {
     final commentsAsync = ref.watch(commentsStreamProvider(widget.activityId));
+    final currentUser = ref.watch(authControllerProvider).user;
     return commentsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => EmptyState(
@@ -66,11 +70,15 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final item = comments[index];
+                  final canDelete =
+                      currentUser != null &&
+                      (currentUser.id == item.userId ||
+                          currentUser.role == UserRole.adminFaculty);
                   final trimmedName = item.userName?.trim();
                   final authorName =
                       trimmedName != null && trimmedName.isNotEmpty
-                          ? trimmedName
-                          : 'User ${item.userId}';
+                      ? trimmedName
+                      : 'User ${item.userId}';
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     leading: CircleAvatar(
@@ -85,13 +93,26 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
                     title: Text(authorName),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.content),
-                      ],
+                      children: [Text(item.content)],
                     ),
-                    trailing: Text(
-                      DateFormat('HH:mm').format(item.createdAt),
-                      style: Theme.of(context).textTheme.bodySmall,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat('HH:mm').format(item.createdAt),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (canDelete) ...[
+                          const SizedBox(width: 4),
+                          IconButton(
+                            tooltip: 'Hapus komentar',
+                            onPressed: _isSubmitting
+                                ? null
+                                : () => _confirmDeleteComment(item),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ],
                     ),
                   );
                 },
@@ -132,18 +153,65 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
 
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(commentRepositoryProvider).addComment(
+      await ref
+          .read(commentRepositoryProvider)
+          .addComment(
             activityId: widget.activityId,
             userId: user.id,
             content: content,
           );
       _controller.clear();
       ref.invalidate(commentsStreamProvider(widget.activityId));
+      await refreshPointDependentWidgetState(ref);
     } catch (error) {
       if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Komentar gagal dikirim: $error')));
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteComment(CommentItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Komentar'),
+        content: const Text(
+          'Komentar akan dihapus dan poin terkait akan disesuaikan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(commentRepositoryProvider).deleteComment(item.id);
+      ref.invalidate(commentsStreamProvider(widget.activityId));
+      await refreshPointDependentWidgetState(ref);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Komentar gagal dikirim: $error')),
+        const SnackBar(content: Text('Komentar berhasil dihapus.')),
       );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Komentar gagal dihapus: $error')));
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

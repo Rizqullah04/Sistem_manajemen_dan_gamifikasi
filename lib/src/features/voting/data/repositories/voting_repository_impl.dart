@@ -104,6 +104,18 @@ class VotingRepositoryImpl implements VotingRepository {
     );
   }
 
+  @override
+  Future<int> clearCompletedVotingLogs() async {
+    final response = await _safeRequest(
+      () => _dio.delete<Map<String, dynamic>>('/votings/completed-logs'),
+    );
+    final data = response.data?['data'];
+    if (data is Map<String, dynamic>) {
+      return int.tryParse(data['deleted_count']?.toString() ?? '') ?? 0;
+    }
+    return 0;
+  }
+
   Voting _mapVoting(Map<String, dynamic> json) {
     final voteDetails = json['vote_details'];
     final pollOptionsJson = json['poll_options'];

@@ -4,15 +4,42 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.d
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
 
 class VotingLogPage extends StatefulWidget {
-  const VotingLogPage({required this.completedVotes, super.key});
+  const VotingLogPage({
+    required this.completedVotes,
+    this.canClearLogs = false,
+    this.onDeleteVoting,
+    this.onClearCompletedLogs,
+    super.key,
+  });
 
   final List<Voting> completedVotes;
+  final bool canClearLogs;
+  final Future<void> Function(Voting voting)? onDeleteVoting;
+  final Future<int> Function()? onClearCompletedLogs;
 
   @override
   State<VotingLogPage> createState() => _VotingLogPageState();
 }
 
 class _VotingLogPageState extends State<VotingLogPage> {
+  late List<Voting> _completedVotes;
+  bool _isClearing = false;
+  final Set<String> _deletingVotingIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _completedVotes = List<Voting>.of(widget.completedVotes);
+  }
+
+  @override
+  void didUpdateWidget(covariant VotingLogPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.completedVotes != widget.completedVotes) {
+      _completedVotes = List<Voting>.of(widget.completedVotes);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -21,7 +48,6 @@ class _VotingLogPageState extends State<VotingLogPage> {
           seedColor: const Color(0xFF8B5CF6),
           brightness: Brightness.dark,
         ),
-        useMaterial3: true,
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFF080B1F),
@@ -29,19 +55,127 @@ class _VotingLogPageState extends State<VotingLogPage> {
           backgroundColor: const Color(0xFF080B1F),
           foregroundColor: Colors.white,
           title: const Text('Log Riwayat Voting'),
+          actions: [
+            if (widget.canClearLogs && _completedVotes.isNotEmpty)
+              IconButton(
+                tooltip: 'Bersihkan semua log selesai',
+                onPressed: _isClearing ? null : _confirmClearCompletedLogs,
+                icon: _isClearing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cleaning_services_rounded),
+              ),
+          ],
         ),
-        body: widget.completedVotes.isEmpty
+        body: _completedVotes.isEmpty
             ? const _EmptyVotingLog()
             : ListView.separated(
                 padding: const EdgeInsets.all(16),
-                itemCount: widget.completedVotes.length,
+                itemCount: _completedVotes.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
-                  return _VotingLogCard(voting: widget.completedVotes[index]);
+                  final voting = _completedVotes[index];
+                  return _VotingLogCard(
+                    voting: voting,
+                    canDelete: widget.canClearLogs,
+                    isDeleting: _deletingVotingIds.contains(voting.id),
+                    onDelete: () => _confirmDeleteVoting(voting),
+                  );
                 },
               ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteVoting(Voting voting) async {
+    final confirmed = await _showConfirmDialog(
+      title: 'Hapus Log Voting?',
+      message:
+          'Log voting "${voting.creatorName}" akan dihapus permanen dari database.',
+      confirmLabel: 'Hapus',
+    );
+    if (confirmed != true || widget.onDeleteVoting == null) return;
+
+    setState(() => _deletingVotingIds.add(voting.id));
+    try {
+      await widget.onDeleteVoting!(voting);
+      if (!mounted) return;
+      setState(() {
+        _completedVotes.removeWhere((item) => item.id == voting.id);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _deletingVotingIds.remove(voting.id));
+    }
+  }
+
+  Future<void> _confirmClearCompletedLogs() async {
+    final confirmed = await _showConfirmDialog(
+      title: 'Bersihkan Semua Log?',
+      message:
+          'Semua log voting yang sudah selesai akan dihapus permanen dari database.',
+      confirmLabel: 'Bersihkan',
+    );
+    if (confirmed != true || widget.onClearCompletedLogs == null) return;
+
+    setState(() => _isClearing = true);
+    try {
+      await widget.onClearCompletedLogs!();
+      if (!mounted) return;
+      setState(_completedVotes.clear);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _isClearing = false);
+    }
+  }
+
+  Future<bool?> _showConfirmDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          icon: Icon(
+            Icons.delete_outline_rounded,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _errorMessage(Object error) {
+    final message = error.toString();
+    return message.replaceFirst('AppException: ', '');
   }
 }
 
@@ -65,9 +199,17 @@ class _EmptyVotingLog extends StatelessWidget {
 }
 
 class _VotingLogCard extends StatelessWidget {
-  const _VotingLogCard({required this.voting});
+  const _VotingLogCard({
+    required this.voting,
+    required this.canDelete,
+    required this.isDeleting,
+    required this.onDelete,
+  });
 
   final Voting voting;
+  final bool canDelete;
+  final bool isDeleting;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +274,26 @@ class _VotingLogCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const _FinishedBadge(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _FinishedBadge(),
+                  if (canDelete) ...[
+                    const SizedBox(height: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Hapus log voting',
+                      onPressed: isDeleting ? null : onDelete,
+                      icon: isDeleting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.delete_outline_rounded),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 16),

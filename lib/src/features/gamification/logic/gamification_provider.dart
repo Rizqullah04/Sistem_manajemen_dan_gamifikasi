@@ -5,9 +5,13 @@ import '../domain/entities/leaderboard_entry.dart';
 
 enum LeaderboardType { individu, ormawa }
 
-final leaderboardTypeProvider = StateProvider<LeaderboardType>((ref) => LeaderboardType.ormawa);
+final leaderboardTypeProvider = StateProvider<LeaderboardType>(
+  (ref) => LeaderboardType.ormawa,
+);
 
-final _gamificationEntriesProvider = FutureProvider<List<LeaderboardEntry>>((ref) {
+final gamificationEntriesProvider = FutureProvider<List<LeaderboardEntry>>((
+  ref,
+) {
   final type = ref.watch(leaderboardTypeProvider);
   final repository = ref.watch(dashboardRepositoryProvider);
   return type == LeaderboardType.ormawa
@@ -16,11 +20,12 @@ final _gamificationEntriesProvider = FutureProvider<List<LeaderboardEntry>>((ref
 });
 
 final gamificationIsLoadingProvider = Provider<bool>((ref) {
-  return ref.watch(_gamificationEntriesProvider).isLoading;
+  return ref.watch(gamificationEntriesProvider).isLoading;
 });
 
 final gamificationLeaderboardProvider = Provider<List<LeaderboardEntry>>((ref) {
-  return ref.watch(_gamificationEntriesProvider).valueOrNull ?? const <LeaderboardEntry>[];
+  return ref.watch(gamificationEntriesProvider).valueOrNull ??
+      const <LeaderboardEntry>[];
 });
 
 final gamificationTop3Provider = Provider<List<LeaderboardEntry>>((ref) {
@@ -42,7 +47,7 @@ final gamificationCurrentEntryProvider = Provider<LeaderboardEntry>((ref) {
     return LeaderboardEntry(
       id: user?.id ?? 'current',
       name: user?.name ?? 'You',
-      points: user?.points ?? 0,
+      points: user?.effectivePoints ?? 0,
       ranking: 0,
       level: user?.level ?? 1,
     );

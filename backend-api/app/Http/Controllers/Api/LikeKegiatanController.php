@@ -34,10 +34,14 @@ class LikeKegiatanController extends Controller
         return $this->successResponse('Like kegiatan berhasil disimpan', new LikeKegiatanResource($like->load('user')), 201);
     }
 
-    public function destroy(LikeKegiatan $likeKegiatan): JsonResponse
+    public function destroy(LikeKegiatan $likeKegiatan, PoinService $poinService): JsonResponse
     {
         if ($likeKegiatan->id_user !== request()->user()->id_user && request()->user()->role !== 'admin') {
             return $this->errorResponse('Anda tidak memiliki akses ke like ini.', status: 403);
+        }
+
+        if ($likeKegiatan->user) {
+            $poinService->batalkanPoinUser($likeKegiatan->user, 'like', $likeKegiatan->id_like);
         }
 
         $likeKegiatan->delete();

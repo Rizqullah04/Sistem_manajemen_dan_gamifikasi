@@ -16,10 +16,7 @@ class AuthRemoteDataSource {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/login',
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: {'email': email, 'password': password},
       );
 
       final responseData = response.data ?? <String, dynamic>{};
@@ -64,6 +61,24 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<User> profile() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/profile');
+      final data = response.data?['data'];
+      if (data is! Map<String, dynamic>) {
+        throw const AppException('Response profile tidak valid.');
+      }
+
+      return _mapUser(data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic> && data['message'] is String) {
+        throw AppException(data['message'] as String);
+      }
+      throw const AppException('Tidak dapat mengambil profile terbaru.');
+    }
+  }
+
   bool _isDatabaseConnectionError(String message) {
     final normalized = message.toLowerCase();
     return normalized.contains('sqlstate') ||
@@ -84,6 +99,15 @@ class AuthRemoteDataSource {
     };
 
     final points = int.tryParse(data['poin']?.toString() ?? '0') ?? 0;
+    final ormawa = data['ormawa'];
+    final ormawaPoints =
+        int.tryParse(data['ormawa_total_poin']?.toString() ?? '') ??
+        (ormawa is Map
+            ? int.tryParse(ormawa['total_poin']?.toString() ?? '')
+            : null);
+    final effectivePoints = role == UserRole.ormawaAccount
+        ? ormawaPoints ?? points
+        : points;
     final badgesData = data['badges'];
     final badges = badgesData is List
         ? badgesData
@@ -99,8 +123,9 @@ class AuthRemoteDataSource {
       studentStaffId: data['email']?.toString() ?? '',
       role: role,
       points: points,
-      level: levelFromPoints(points),
+      level: levelFromPoints(effectivePoints),
       ormawaId: data['id_ormawa']?.toString(),
+      ormawaPoints: ormawaPoints,
       badges: badges,
     );
   }

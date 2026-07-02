@@ -55,6 +55,15 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> profile() async {
+    final user = _user;
+    if (user == null) {
+      throw StateError('No test user configured');
+    }
+    return user;
+  }
+
+  @override
   Future<void> logout() async {}
 }
 
@@ -158,6 +167,13 @@ class _FakeVotingRepository implements VotingRepository {
   @override
   Future<void> deleteVoting(String votingId) async {
     _items.removeWhere((item) => item.id == votingId);
+  }
+
+  @override
+  Future<int> clearCompletedVotingLogs() async {
+    final before = _items.length;
+    _items.removeWhere((item) => item.status == 'SELESAI');
+    return before - _items.length;
   }
 }
 
@@ -282,87 +298,73 @@ Future<void> _pumpPage(
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
         path: '/admin',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Admin route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Admin route'),
       ),
       GoRoute(
         path: '/admin/ormawas',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Admin Ormawa route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Admin Ormawa route'),
       ),
       GoRoute(
         path: '/admin/students',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Admin Students route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Admin Students route'),
       ),
       GoRoute(
         path: '/admin/gamification/badges',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Badge Settings route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Badge Settings route'),
       ),
       GoRoute(
         path: '/admin/ormawa-awards',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Ormawa Awards route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Ormawa Awards route'),
       ),
       GoRoute(
         path: '/ormawa',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Ormawa route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Ormawa route'),
       ),
       GoRoute(
         path: '/ormawa/members',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Ormawa Members route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Ormawa Members route'),
       ),
       GoRoute(
         path: '/activities',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Activities route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Activities route'),
       ),
       GoRoute(
         path: '/leaderboard',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Leaderboard route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Leaderboard route'),
       ),
       GoRoute(
         path: '/gamification/points-badges',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Point & Badge route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Point & Badge route'),
       ),
       GoRoute(
         path: '/voting',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Voting route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Voting route'),
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Profile route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Profile route'),
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Settings route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Settings route'),
       ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const _SmokeRoutePlaceholder(
-          title: 'Register route',
-        ),
+        builder: (context, state) =>
+            const _SmokeRoutePlaceholder(title: 'Register route'),
       ),
     ],
   );

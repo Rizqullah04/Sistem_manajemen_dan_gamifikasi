@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VotingResource;
 use App\Models\Voting;
+use App\Services\PoinService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class VotingController extends Controller
@@ -45,7 +47,8 @@ class VotingController extends Controller
 
         if ($request->user()->role === 'ormawa' && $data['jenis_voting'] === 'ketua') {
             $minimumPoint = 100;
-            if ((int) ($request->user()->poin ?? 0) < $minimumPoint) {
+            $ormawaTotalPoin = (int) ($request->user()->loadMissing('ormawa')->ormawa?->total_poin ?? 0);
+            if ($ormawaTotalPoin < $minimumPoint) {
                 return $this->errorResponse(
                     'Akumulasi poin ormawa belum mencukupi untuk membuat voting ketua.',
                     status: 403
@@ -89,10 +92,47 @@ class VotingController extends Controller
         return $this->successResponse('Voting berhasil diperbarui', new VotingResource($voting->fresh(['ormawa', 'voteDetails.user'])));
     }
 
-    public function destroy(Voting $voting): JsonResponse
+    public function clearCompletedLogs(PoinService $poinService): JsonResponse
     {
+        $deletedCount = DB::transaction(function () use ($poinService): int {
+            $votings = Voting::with(['voteDetails.user.ormawa'])
+                ->where(function ($query) {
+                    $query
+                        ->where('status', 'selesai')
+                        ->orWhere('tanggal_selesai', '<', now());
+                })
+                ->get();
+
+            foreach ($votings as $voting) {
+                $this->cancelVotePoints($voting, $poinService);
+                $voting->delete();
+            }
+
+            return $votings->count();
+        });
+
+        return $this->successResponse('Log voting selesai berhasil dibersihkan', [
+            'deleted_count' => $deletedCount,
+        ]);
+    }
+
+    public function destroy(Voting $voting, PoinService $poinService): JsonResponse
+    {
+        $voting->loadMissing(['voteDetails.user.ormawa']);
+        $this->cancelVotePoints($voting, $poinService);
         $voting->delete();
 
         return $this->successResponse('Voting berhasil dihapus');
+    }
+
+    private function cancelVotePoints(Voting $voting, PoinService $poinService): void
+    {
+        foreach ($voting->voteDetails as $voteDetail) {
+            if ($voteDetail->user === null) {
+                continue;
+            }
+
+            $poinService->batalkanPoinUser($voteDetail->user, 'voting', $voteDetail->id_vote);
+        }
     }
 }

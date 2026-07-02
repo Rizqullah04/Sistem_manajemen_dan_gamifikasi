@@ -16,14 +16,23 @@ class CommentRepositoryImpl implements CommentRepository {
     required String userId,
     required String content,
   }) async {
-    await _safeRequest(() => _dio.post<Map<String, dynamic>>(
-          '/diskusis',
-          data: {
-            'id_kegiatan': activityId,
-            'id_user': userId,
-            'komentar': content,
-          },
-        ));
+    await _safeRequest(
+      () => _dio.post<Map<String, dynamic>>(
+        '/diskusis',
+        data: {
+          'id_kegiatan': activityId,
+          'id_user': userId,
+          'komentar': content,
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteComment(String commentId) async {
+    await _safeRequest(
+      () => _dio.delete<Map<String, dynamic>>('/diskusis/$commentId'),
+    );
   }
 
   @override
@@ -35,12 +44,15 @@ class CommentRepositoryImpl implements CommentRepository {
   }
 
   Future<List<CommentItem>> _fetchByActivity(String activityId) async {
-    final response = await _safeRequest(() => _dio.get<Map<String, dynamic>>(
-          '/diskusis',
-          queryParameters: {'id_kegiatan': activityId},
-        ));
+    final response = await _safeRequest(
+      () => _dio.get<Map<String, dynamic>>(
+        '/diskusis',
+        queryParameters: {'id_kegiatan': activityId},
+      ),
+    );
     final data = response.data?['data'];
-    if (data is! List) throw const AppException('Response diskusi tidak valid.');
+    if (data is! List)
+      throw const AppException('Response diskusi tidak valid.');
     return data.whereType<Map<String, dynamic>>().map(_mapComment).toList();
   }
 
@@ -52,7 +64,8 @@ class CommentRepositoryImpl implements CommentRepository {
       kegiatanId: json['id_kegiatan']?.toString() ?? '',
       content: json['komentar']?.toString() ?? '',
       createdAt:
-          DateTime.tryParse(json['tanggal']?.toString() ?? '') ?? DateTime.now(),
+          DateTime.tryParse(json['tanggal']?.toString() ?? '') ??
+          DateTime.now(),
       userName: user is Map<String, dynamic> ? user['nama']?.toString() : null,
     );
   }
