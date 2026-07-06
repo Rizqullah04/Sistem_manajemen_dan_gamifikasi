@@ -16,8 +16,9 @@ final ormawaMembersProvider = FutureProvider<List<OrmawaMember>>((ref) async {
     return const <OrmawaMember>[];
   }
 
+  final isBemAccount = user!.name.toLowerCase().contains('bem');
   final response = await ref.watch(dioProvider).get<Map<String, dynamic>>(
-        '/ormawa/members',
+        isBemAccount ? '/bem/members' : '/ormawa/members',
       );
 
   final responseData = response.data ?? <String, dynamic>{};
@@ -58,6 +59,7 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
   final _searchController = TextEditingController();
   String _query = '';
   String? _updatingMemberId;
+  String? _updatingBemMemberId;
 
   @override
   void dispose() {
@@ -69,6 +71,7 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
     final membersAsync = ref.watch(ormawaMembersProvider);
+    final isBemAccount = user?.name.toLowerCase().contains('bem') == true;
 
     if (user?.role != UserRole.ormawaAccount) {
       return const EmptyState(
@@ -89,6 +92,7 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
         final filteredMembers = members.where((member) {
           final keyword = _query.toLowerCase();
           return member.name.toLowerCase().contains(keyword) ||
+              member.nim.toLowerCase().contains(keyword) ||
               member.email.toLowerCase().contains(keyword);
         }).toList();
 
@@ -109,8 +113,9 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
                 children: [
                   _MembersHeader(
                     totalMembers: members.length,
-                    activeMembers:
-                        members.where((member) => member.isActive).length,
+                    activeMembers: isBemAccount
+                        ? members.where((member) => member.isBemMember).length
+                        : members.where((member) => member.isActive).length,
                     inactiveMembers:
                         members.where((member) => member.isInactive).length,
                     pendingMembers:
@@ -118,13 +123,14 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
                     rejectedMembers:
                         members.where((member) => member.isRejected).length,
                     isWide: isWide,
+                    isBemAccount: isBemAccount,
                   ),
                   SizedBox(height: spacing),
                   TextField(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _query = value),
                     decoration: InputDecoration(
-                      hintText: 'Cari nama atau email anggota',
+                      hintText: 'Cari nama, NIM, atau email anggota',
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: _query.isEmpty
                           ? null
@@ -160,10 +166,13 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
                         child: _MemberCard(
                           member: member,
                           isUpdating: _updatingMemberId == member.id,
+                          isBemManagement: isBemAccount,
+                          isUpdatingBem: _updatingBemMemberId == member.id,
                           onStatusChanged: (status) => _updateMemberStatus(
                             member,
                             status,
                           ),
+                          onBemMembershipChanged: _updateBemMembership,
                         ),
                       ),
                     ),
@@ -219,6 +228,44 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
       if (mounted) setState(() => _updatingMemberId = null);
     }
   }
+
+  Future<void> _updateBemMembership(
+    OrmawaMember member,
+    bool shouldBeMember,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() => _updatingBemMemberId = member.id);
+    try {
+      final dio = ref.read(dioProvider);
+      if (shouldBeMember) {
+        await dio.post<Map<String, dynamic>>(
+          '/bem/members',
+          data: {'id_user': member.id},
+        );
+      } else {
+        await dio.delete<Map<String, dynamic>>('/bem/members/${member.id}');
+      }
+      ref.invalidate(ormawaMembersProvider);
+      await ref.read(ormawaMembersProvider.future);
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            shouldBeMember
+                ? '${member.name} ditambahkan ke BEM.'
+                : '${member.name} dikeluarkan dari BEM.',
+          ),
+        ),
+      );
+    } on DioException catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _updatingBemMemberId = null);
+    }
+  }
 }
 
 class _MembersHeader extends StatelessWidget {
@@ -229,6 +276,7 @@ class _MembersHeader extends StatelessWidget {
     required this.pendingMembers,
     required this.rejectedMembers,
     required this.isWide,
+    required this.isBemAccount,
   });
 
   final int totalMembers;
@@ -237,6 +285,7 @@ class _MembersHeader extends StatelessWidget {
   final int pendingMembers;
   final int rejectedMembers;
   final bool isWide;
+  final bool isBemAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +296,7 @@ class _MembersHeader extends StatelessWidget {
         icon: Icons.groups_outlined,
       ),
       _SummaryPill(
-        label: 'Aktif',
+        label: isBemAccount ? 'Anggota BEM' : 'Aktif',
         value: '$activeMembers',
         icon: Icons.verified_user_outlined,
       ),
@@ -279,7 +328,9 @@ class _MembersHeader extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Pantau akun anggota yang memilih Ormawa Anda saat registrasi.',
+          isBemAccount
+              ? 'Tunjuk mahasiswa dari seluruh himpunan Teknik sebagai anggota BEM.'
+              : 'Pantau akun anggota yang memilih Ormawa Anda saat registrasi.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -363,12 +414,19 @@ class _MemberCard extends StatelessWidget {
   const _MemberCard({
     required this.member,
     required this.isUpdating,
+    required this.isBemManagement,
+    required this.isUpdatingBem,
     required this.onStatusChanged,
+    required this.onBemMembershipChanged,
   });
 
   final OrmawaMember member;
   final bool isUpdating;
+  final bool isBemManagement;
+  final bool isUpdatingBem;
   final ValueChanged<String> onStatusChanged;
+  final void Function(OrmawaMember member, bool shouldBeMember)
+  onBemMembershipChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -409,6 +467,8 @@ class _MemberCard extends StatelessWidget {
             children: [
               _MemberMeta(icon: Icons.mail_outline_rounded, label: member.email),
               const SizedBox(height: 4),
+              _MemberMeta(icon: Icons.badge_outlined, label: member.nim),
+              const SizedBox(height: 4),
               _MemberMeta(
                 icon: Icons.stars_outlined,
                 label: '${member.points} poin',
@@ -421,6 +481,12 @@ class _MemberCard extends StatelessWidget {
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : isBemManagement
+            ? _BemMembershipButton(
+                member: member,
+                isUpdating: isUpdatingBem,
+                onChanged: onBemMembershipChanged,
               )
             : PopupMenuButton<String>(
                 tooltip: 'Ubah status anggota',
@@ -482,18 +548,56 @@ class _MemberMeta extends StatelessWidget {
   }
 }
 
+class _BemMembershipButton extends StatelessWidget {
+  const _BemMembershipButton({
+    required this.member,
+    required this.isUpdating,
+    required this.onChanged,
+  });
+
+  final OrmawaMember member;
+  final bool isUpdating;
+  final void Function(OrmawaMember member, bool shouldBeMember) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isUpdating) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return OutlinedButton.icon(
+      onPressed: () => onChanged(member, !member.isBemMember),
+      icon: Icon(
+        member.isBemMember
+            ? Icons.person_remove_alt_1_outlined
+            : Icons.person_add_alt_1_rounded,
+        size: 18,
+      ),
+      label: Text(member.isBemMember ? 'Keluarkan' : 'Tambah BEM'),
+    );
+  }
+}
+
 class OrmawaMember {
   const OrmawaMember({
     required this.id,
     required this.name,
+    required this.nim,
     required this.email,
+    required this.isBemMember,
     required this.points,
     required this.status,
   });
 
   final String id;
   final String name;
+  final String nim;
   final String email;
+  final bool isBemMember;
   final int points;
   final String status;
 
@@ -534,7 +638,17 @@ class OrmawaMember {
     return OrmawaMember(
       id: json['id_user']?.toString() ?? '',
       name: json['nama']?.toString() ?? '-',
+      nim:
+          json['nim']?.toString() ??
+          json['student_staff_id']?.toString() ??
+          json['nomor_induk']?.toString() ??
+          '-',
       email: json['email']?.toString() ?? '-',
+      isBemMember:
+          json['bem_membership'] is Map<String, dynamic> &&
+          (json['bem_membership'] as Map<String, dynamic>)['status']
+                  ?.toString() ==
+              'aktif',
       points: int.tryParse(json['poin']?.toString() ?? '0') ?? 0,
       status: json['status_akun']?.toString() ?? '-',
     );

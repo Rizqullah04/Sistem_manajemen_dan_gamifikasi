@@ -26,6 +26,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'nama',
+        'nim',
         'email',
         'password',
         'poin',
@@ -60,6 +61,16 @@ class User extends Authenticatable
     public function ormawa(): BelongsTo
     {
         return $this->belongsTo(Ormawa::class, 'id_ormawa', 'id_ormawa');
+    }
+
+    public function ormawaMemberships(): HasMany
+    {
+        return $this->hasMany(UserOrmawaMembership::class, 'id_user', 'id_user');
+    }
+
+    public function appointedOrmawaMemberships(): HasMany
+    {
+        return $this->hasMany(UserOrmawaMembership::class, 'appointed_by', 'id_user');
     }
 
     public function adminProfile(): HasOne

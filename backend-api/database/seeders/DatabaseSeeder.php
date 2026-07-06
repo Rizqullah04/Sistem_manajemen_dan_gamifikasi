@@ -57,10 +57,17 @@ class DatabaseSeeder extends Seeder
         ];
 
         $ormawaEmails = [
-            'BEM Fakultas Teknik' => 'bem.fakultas.teknik@ormawa-app.test',
-            'HMJTI - Himpunan Mahasiswa Jurusan Teknik Informatika' => 'hmjti.himpunan.mahasiswa.jurusan.teknik.informatika@ormawa-app.test',
-            'HMTM - Himpunan Mahasiswa Teknik Mesin' => 'hmtm.himpunan.mahasiswa.teknik.mesin@ormawa-app.test',
-            'HMJTK - Himpunan Mahasiswa Jurusan Teknik Kimia' => 'hmjtk.himpunan.mahasiswa.jurusan.teknik.kimia@ormawa-app.test',
+            'BEM Fakultas Teknik' => 'bem@ormawa-app.test',
+            'HMJTI - Himpunan Mahasiswa Jurusan Teknik Informatika' => 'hmjti@ormawa-app.test',
+            'HMTM - Himpunan Mahasiswa Teknik Mesin' => 'hmtm@ormawa-app.test',
+            'HMJTK - Himpunan Mahasiswa Jurusan Teknik Kimia' => 'hmjtk@ormawa-app.test',
+        ];
+
+        $ormawaAccountNames = [
+            'BEM Fakultas Teknik' => 'BEM',
+            'HMJTI - Himpunan Mahasiswa Jurusan Teknik Informatika' => 'HMJTI',
+            'HMTM - Himpunan Mahasiswa Teknik Mesin' => 'HMTM',
+            'HMJTK - Himpunan Mahasiswa Jurusan Teknik Kimia' => 'HMJTK',
         ];
 
         Ormawa::whereNotIn('nama_ormawa', array_keys($ormawaSeeds))->delete();
@@ -77,7 +84,7 @@ class DatabaseSeeder extends Seeder
                 'id_ormawa' => $ormawa->id_ormawa,
                 'role' => 'ormawa',
             ], [
-                'nama' => 'Akun '.$namaOrmawa,
+                'nama' => $ormawaAccountNames[$namaOrmawa],
                 'email' => $ormawaEmails[$namaOrmawa],
                 'password' => 'password',
                 'status_akun' => 'aktif',

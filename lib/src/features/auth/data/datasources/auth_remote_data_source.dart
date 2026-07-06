@@ -120,7 +120,12 @@ class AuthRemoteDataSource {
     return User(
       id: data['id_user']?.toString() ?? data['id']?.toString() ?? '',
       name: data['nama']?.toString() ?? data['name']?.toString() ?? '',
-      studentStaffId: data['email']?.toString() ?? '',
+      studentStaffId:
+          data['nim']?.toString() ??
+          data['student_staff_id']?.toString() ??
+          data['nomor_induk']?.toString() ??
+          data['email']?.toString() ??
+          '',
       role: role,
       points: points,
       level: levelFromPoints(effectivePoints),

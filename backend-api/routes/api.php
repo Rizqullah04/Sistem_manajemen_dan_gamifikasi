@@ -62,6 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin,ormawa')->group(function () {
         Route::apiResource('kegiatans', KegiatanController::class)->except(['index', 'show']);
         Route::apiResource('votings', VotingController::class)->except(['index', 'show']);
+        Route::get('/bem/members', [UserController::class, 'bemMembers']);
+        Route::post('/bem/members', [UserController::class, 'appointBemMember']);
+        Route::delete('/bem/members/{user}', [UserController::class, 'removeBemMember']);
     });
 
     Route::middleware('role:ormawa')->group(function () {

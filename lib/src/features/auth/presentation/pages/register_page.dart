@@ -17,9 +17,16 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _nimController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  static const _unwahasCode = '10';
+  static const _engineeringStudyPrograms = <String, String>{
+    '3041': 'Teknik Informatika',
+    '3011': 'Teknik Mesin',
+    '3021': 'Teknik Kimia',
+  };
   final List<_OrmawaOption> _ormawaOptions = [];
   String? _selectedOrmawaId;
   bool _hidePassword = true;
@@ -31,12 +38,15 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void initState() {
     super.initState();
+    _nimController.addListener(_syncOrmawaSelectionWithNim);
     _loadOrmawaOptions();
   }
 
   @override
   void dispose() {
+    _nimController.removeListener(_syncOrmawaSelectionWithNim);
     _nameController.dispose();
+    _nimController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -71,6 +81,7 @@ class _RegisterPageState extends State<RegisterPage> {
           ? data
                 .whereType<Map<String, dynamic>>()
                 .map(_OrmawaOption.fromJson)
+                .where((option) => !option.isBem)
                 .toList()
           : <_OrmawaOption>[];
       final currentSelectionStillExists = options.any(
@@ -114,6 +125,7 @@ class _RegisterPageState extends State<RegisterPage> {
         },
         body: jsonEncode({
           'nama': _nameController.text.trim(),
+          'nim': _nimController.text.trim(),
           'email': _emailController.text.trim(),
           'id_ormawa': _selectedOrmawaId,
           'password': _passwordController.text,
@@ -146,6 +158,25 @@ class _RegisterPageState extends State<RegisterPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _syncOrmawaSelectionWithNim() {
+    if (!mounted) return;
+    final selectedOrmawaId = _selectedOrmawaId;
+    if (selectedOrmawaId == null) {
+      setState(() {});
+      return;
+    }
+
+    final selectedOrmawa = _ormawaOptions.where(
+      (option) => option.id == selectedOrmawaId,
+    );
+    if (selectedOrmawa.isEmpty || _isOrmawaAllowedForNim(selectedOrmawa.first)) {
+      setState(() {});
+      return;
+    }
+
+    setState(() => _selectedOrmawaId = null);
   }
 
   String _readErrorMessage(String responseBody) {
@@ -193,9 +224,55 @@ class _RegisterPageState extends State<RegisterPage> {
     return null;
   }
 
+  String? _validateNim(String? value) {
+    final nim = value?.trim() ?? '';
+    if (nim.isEmpty) return 'NIM wajib diisi';
+    if (!RegExp(r'^\d+$').hasMatch(nim)) return 'NIM hanya boleh berisi angka';
+    if (nim.length != 11) return 'NIM harus terdiri dari 11 digit';
+
+    final admissionYear = int.tryParse(nim.substring(0, 2));
+    final currentYear = DateTime.now().year % 100;
+    if (admissionYear == null || admissionYear > currentYear) {
+      return 'Tahun angkatan NIM tidak valid';
+    }
+
+    final universityCode = nim.substring(2, 4);
+    if (universityCode != _unwahasCode) {
+      return 'Kode universitas NIM bukan Universitas Wahid Hasyim';
+    }
+
+    final studyProgramCode = nim.substring(4, 8);
+    if (!_engineeringStudyPrograms.containsKey(studyProgramCode)) {
+      return 'Kode prodi NIM bukan prodi Fakultas Teknik';
+    }
+
+    final sequenceNumber = nim.substring(8, 11);
+    if (sequenceNumber == '000') return 'Nomor urut NIM tidak valid';
+
+    return null;
+  }
+
   String? _validateOrmawa(String? value) {
     if (value == null || value.isEmpty) return 'Ormawa wajib dipilih';
+    final selected = _ormawaOptions.where((option) => option.id == value);
+    if (selected.isNotEmpty && !_isOrmawaAllowedForNim(selected.first)) {
+      return 'Ormawa tidak sesuai dengan prodi pada NIM';
+    }
     return null;
+  }
+
+  String? _studyProgramCodeFromNim() {
+    final nim = _nimController.text.trim();
+    if (nim.length != 11 || !RegExp(r'^\d+$').hasMatch(nim)) return null;
+    if (nim.substring(2, 4) != _unwahasCode) return null;
+    final code = nim.substring(4, 8);
+    return _engineeringStudyPrograms.containsKey(code) ? code : null;
+  }
+
+  bool _isOrmawaAllowedForNim(_OrmawaOption option) {
+    final code = _studyProgramCodeFromNim();
+    if (code == null) return true;
+    return option.isAllowedForStudyProgram(code);
   }
 
   String? _validatePassword(String? value) {
@@ -294,6 +371,16 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           const SizedBox(height: 14),
                           CustomTextField(
+                            label: 'NIM',
+                            hintText: 'Contoh: 22103041069',
+                            controller: _nimController,
+                            validator: _validateNim,
+                            keyboardType: TextInputType.number,
+                            helperText:
+                                'Format: angkatan, kode Unwahas, kode prodi Teknik, nomor urut',
+                          ),
+                          const SizedBox(height: 14),
+                          CustomTextField(
                             label: 'Email',
                             hintText: 'nama@email.com',
                             controller: _emailController,
@@ -370,6 +457,20 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Widget _buildOrmawaDropdown() {
+    final studyProgramCode = _studyProgramCodeFromNim();
+    final visibleOptions = studyProgramCode == null
+        ? _ormawaOptions
+        : _ormawaOptions
+              .where((option) => option.isAllowedForStudyProgram(studyProgramCode))
+              .toList();
+    final selectedOptionVisible = visibleOptions.any(
+      (option) => option.id == _selectedOrmawaId,
+    );
+    final dropdownValue = selectedOptionVisible ? _selectedOrmawaId : null;
+    final studyProgramName = studyProgramCode == null
+        ? null
+        : _engineeringStudyPrograms[studyProgramCode];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -382,14 +483,14 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          key: ValueKey(_selectedOrmawaId),
-          initialValue: _selectedOrmawaId,
+          key: ValueKey('$dropdownValue-$studyProgramCode'),
+          initialValue: dropdownValue,
           validator: _validateOrmawa,
           isExpanded: true,
           dropdownColor: const Color(0xFF22133E),
           style: const TextStyle(color: Colors.white),
           selectedItemBuilder: (context) {
-            return _ormawaOptions.map((option) {
+            return visibleOptions.map((option) {
               return Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -403,13 +504,19 @@ class _RegisterPageState extends State<RegisterPage> {
           decoration: InputDecoration(
             hintText: _isLoadingOrmawa
                 ? 'Memuat daftar Ormawa...'
-                : 'Pilih Ormawa',
+                : studyProgramCode == null
+                ? 'Pilih Ormawa'
+                : 'Pilih Ormawa untuk $studyProgramName',
             hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
             helperText:
                 _ormawaErrorMessage ??
                 (_ormawaOptions.isEmpty && !_isLoadingOrmawa
                     ? 'Belum ada Ormawa. Admin perlu menambahkan data Ormawa dulu.'
-                    : 'Ormawa yang dipilih akan menerima notifikasi pendaftaran Anda'),
+                    : visibleOptions.isEmpty && studyProgramCode != null
+                    ? 'Belum ada Ormawa yang sesuai dengan prodi pada NIM.'
+                    : studyProgramCode == null
+                    ? 'Isi NIM untuk membatasi pilihan Ormawa sesuai prodi'
+                    : 'Pilihan hanya menampilkan himpunan yang sesuai prodi NIM'),
             helperStyle: TextStyle(
               color: _ormawaErrorMessage == null
                   ? Colors.white.withValues(alpha: 0.58)
@@ -448,7 +555,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     tooltip: 'Muat ulang Ormawa',
                   ),
           ),
-          items: _ormawaOptions.map((option) {
+          items: visibleOptions.map((option) {
             return DropdownMenuItem<String>(
               value: option.id,
               child: ConstrainedBox(
@@ -478,7 +585,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             );
           }).toList(),
-          onChanged: _isLoadingOrmawa || _ormawaOptions.isEmpty
+          onChanged: _isLoadingOrmawa || visibleOptions.isEmpty
               ? null
               : (value) => setState(() => _selectedOrmawaId = value),
         ),
@@ -492,17 +599,82 @@ class _OrmawaOption {
     required this.id,
     required this.name,
     required this.description,
+    required this.allowedStudyProgramCodes,
+    required this.isBem,
   });
 
   final String id;
   final String name;
   final String description;
+  final List<String> allowedStudyProgramCodes;
+  final bool isBem;
+
+  bool isAllowedForStudyProgram(String studyProgramCode) {
+    if (isBem) return false;
+    if (allowedStudyProgramCodes.isEmpty) return true;
+    return allowedStudyProgramCodes.contains(studyProgramCode);
+  }
 
   factory _OrmawaOption.fromJson(Map<String, dynamic> json) {
+    final allowedCodes = _readAllowedStudyProgramCodes(json);
+    final isBem = _isBemOrmawa(json);
     return _OrmawaOption(
       id: json['id_ormawa']?.toString() ?? '',
       name: json['nama_ormawa']?.toString() ?? '-',
       description: json['deskripsi']?.toString() ?? '',
+      allowedStudyProgramCodes: allowedCodes,
+      isBem: isBem,
     );
+  }
+
+  static bool _isBemOrmawa(Map<String, dynamic> json) {
+    final name = json['nama_ormawa']?.toString().toLowerCase() ?? '';
+    final description = json['deskripsi']?.toString().toLowerCase() ?? '';
+    return '$name $description'.contains('bem');
+  }
+
+  static List<String> _readAllowedStudyProgramCodes(Map<String, dynamic> json) {
+    final explicitCodes = _codesFromValue(
+      json['allowed_prodi_codes'] ??
+          json['allowed_kode_prodi'] ??
+          json['kode_prodi'],
+    );
+    if (explicitCodes.isNotEmpty) return explicitCodes;
+
+    final scope = json['scope']?.toString().toLowerCase() ?? '';
+    final type = json['jenis_ormawa']?.toString().toLowerCase() ?? '';
+    if (scope.contains('fakultas') ||
+        type.contains('fakultas') ||
+        scope.contains('bem') ||
+        type.contains('bem')) {
+      return const ['3041', '3011', '3021'];
+    }
+
+    final name = json['nama_ormawa']?.toString().toLowerCase() ?? '';
+    final description = json['deskripsi']?.toString().toLowerCase() ?? '';
+    final combined = '$name $description';
+    if (combined.contains('informatika')) return const ['3041'];
+    if (combined.contains('mesin')) return const ['3011'];
+    if (combined.contains('kimia') || combined.contains('hmjtk')) {
+      return const ['3021'];
+    }
+
+    return const [];
+  }
+
+  static List<String> _codesFromValue(Object? value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty) return const [];
+    return text
+        .split(RegExp(r'[,;\s]+'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 }

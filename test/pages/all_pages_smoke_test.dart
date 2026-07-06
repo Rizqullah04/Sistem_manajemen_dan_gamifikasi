@@ -19,6 +19,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentat
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/chat_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/member_dashboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/ormawa_dashboard_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/ormawa_members_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/profile_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/settings_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/providers/dashboard_providers.dart';
@@ -271,7 +272,7 @@ const _ormawaUser = User(
 const _memberUser = User(
   id: 'u3',
   name: 'Andi Pratama',
-  studentStaffId: 'ANG001',
+  studentStaffId: '22103041069',
   role: UserRole.memberAccount,
   points: 96,
   level: 1,
@@ -399,8 +400,8 @@ Future<void> _pumpPage(
               totalPoints: 320,
               users: [
                 ManagedOrmawaUser(
-                  name: 'Akun HTI',
-                  email: 'hti@example.com',
+                  name: 'HMJTI',
+                  email: 'hmjti@ormawa-app.test',
                   role: 'ormawa',
                 ),
                 ManagedOrmawaUser(
@@ -417,16 +418,42 @@ Future<void> _pumpPage(
             ManagedStudent(
               id: 'u3',
               name: 'Andi Pratama',
+              nim: '22103041069',
               email: 'andi@example.com',
               ormawaName: 'Himpunan Teknik Informatika',
+              isBemMember: true,
               points: 96,
               status: 'aktif',
             ),
             ManagedStudent(
               id: 'u4',
               name: 'Siti Rahma',
+              nim: '22103011070',
               email: 'siti@example.com',
               ormawaName: 'Badan Eksekutif Mahasiswa',
+              isBemMember: false,
+              points: 80,
+              status: 'pending',
+            ),
+          ],
+        ),
+        ormawaMembersProvider.overrideWith(
+          (ref) async => const [
+            OrmawaMember(
+              id: 'u3',
+              name: 'Andi Pratama',
+              nim: '22103041069',
+              email: 'andi@example.com',
+              isBemMember: true,
+              points: 96,
+              status: 'aktif',
+            ),
+            OrmawaMember(
+              id: 'u4',
+              name: 'Siti Rahma',
+              nim: '22103011070',
+              email: 'siti@example.com',
+              isBemMember: false,
               points: 80,
               status: 'pending',
             ),
@@ -514,9 +541,11 @@ void main() {
 
       expect(find.text('Monitoring Mahasiswa'), findsOneWidget);
       expect(find.text('Nama Mahasiswa'), findsOneWidget);
-      expect(find.text('Asal Ormawa'), findsOneWidget);
+      expect(find.textContaining('NIM'), findsWidgets);
+      expect(find.text('Asal Ormawa'), findsWidgets);
       expect(find.text('Andi Pratama'), findsOneWidget);
-      expect(find.text('Badan Eksekutif Mahasiswa'), findsOneWidget);
+      expect(find.textContaining('22103041069'), findsWidgets);
+      expect(find.textContaining('Badan Eksekutif Mahasiswa'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
@@ -526,6 +555,15 @@ void main() {
       expect(find.text('Dashboard Ormawa'), findsOneWidget);
       expect(find.text('Total Poin'), findsOneWidget);
       expect(find.text('Notifikasi Terbaru'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('ormawa members page renders member NIM', (tester) async {
+      await _pumpPage(tester, const OrmawaMembersPage(), user: _ormawaUser);
+
+      expect(find.text('Monitoring Anggota'), findsOneWidget);
+      expect(find.text('Andi Pratama'), findsOneWidget);
+      expect(find.text('22103041069'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

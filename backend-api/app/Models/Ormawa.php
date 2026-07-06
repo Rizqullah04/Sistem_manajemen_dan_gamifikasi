@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class Ormawa extends Model
 {
@@ -18,6 +19,11 @@ class Ormawa extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'id_ormawa', 'id_ormawa');
+    }
+
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(UserOrmawaMembership::class, 'id_ormawa', 'id_ormawa');
     }
 
     public function kegiatans(): HasMany
@@ -74,7 +80,15 @@ class Ormawa extends Model
         $anggotaPoin = (int) PoinLog::query()
             ->whereNotNull('id_user')
             ->when($activePeriodId, fn ($query, int $periodId) => $query->where('id_period', $periodId))
-            ->whereHas('user', fn ($query) => $query->where('id_ormawa', $this->id_ormawa))
+            ->whereHas('user', function ($query) {
+                $query->where('id_ormawa', $this->id_ormawa);
+
+                if (Schema::hasTable('user_ormawa_memberships')) {
+                    $query->orWhereHas('ormawaMemberships', fn ($membershipQuery) => $membershipQuery
+                        ->where('id_ormawa', $this->id_ormawa)
+                        ->where('status', 'aktif'));
+                }
+            })
             ->sum('poin');
 
         return $ormawaPoin + $anggotaPoin;

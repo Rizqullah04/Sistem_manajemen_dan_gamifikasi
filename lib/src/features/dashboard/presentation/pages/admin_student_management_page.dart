@@ -54,6 +54,7 @@ class _AdminStudentManagementContentState
     extends ConsumerState<_AdminStudentManagementContent> {
   final _searchController = TextEditingController();
   String _query = '';
+  String? _updatingBemMemberId;
 
   @override
   void dispose() {
@@ -86,6 +87,7 @@ class _AdminStudentManagementContentState
         final keyword = _query.toLowerCase();
         final filtered = students.where((student) {
           return student.name.toLowerCase().contains(keyword) ||
+              student.nim.toLowerCase().contains(keyword) ||
               student.email.toLowerCase().contains(keyword) ||
               student.ormawaName.toLowerCase().contains(keyword);
         }).toList();
@@ -123,7 +125,7 @@ class _AdminStudentManagementContentState
                     controller: _searchController,
                     onChanged: (value) => setState(() => _query = value),
                     decoration: InputDecoration(
-                      hintText: 'Cari nama, email, atau asal Ormawa',
+                      hintText: 'Cari nama, NIM, email, atau asal Ormawa',
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: _query.isEmpty
                           ? null
@@ -153,12 +155,20 @@ class _AdminStudentManagementContentState
                       icon: Icons.search_off_rounded,
                     )
                   else if (isWide)
-                    _StudentDataTable(students: filtered)
+                    _StudentDataTable(
+                      students: filtered,
+                      updatingBemMemberId: _updatingBemMemberId,
+                      onBemMembershipChanged: _updateBemMembership,
+                    )
                   else
                     ...filtered.map(
                       (student) => Padding(
                         padding: EdgeInsets.only(bottom: spacing),
-                        child: _StudentCard(student: student),
+                        child: _StudentCard(
+                          student: student,
+                          isUpdatingBem: _updatingBemMemberId == student.id,
+                          onBemMembershipChanged: _updateBemMembership,
+                        ),
                       ),
                     ),
                 ],
@@ -181,6 +191,44 @@ class _AdminStudentManagementContentState
     }
 
     return error.toString();
+  }
+
+  Future<void> _updateBemMembership(
+    ManagedStudent student,
+    bool shouldBeMember,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() => _updatingBemMemberId = student.id);
+    try {
+      final dio = ref.read(dioProvider);
+      if (shouldBeMember) {
+        await dio.post<Map<String, dynamic>>(
+          '/bem/members',
+          data: {'id_user': student.id},
+        );
+      } else {
+        await dio.delete<Map<String, dynamic>>('/bem/members/${student.id}');
+      }
+
+      ref.invalidate(adminStudentsProvider);
+      await ref.read(adminStudentsProvider.future);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            shouldBeMember
+                ? '${student.name} ditambahkan ke BEM.'
+                : '${student.name} dikeluarkan dari BEM.',
+          ),
+        ),
+      );
+    } on DioException catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _updatingBemMemberId = null);
+    }
   }
 }
 
@@ -316,9 +364,16 @@ class _SummaryPill extends StatelessWidget {
 }
 
 class _StudentDataTable extends StatelessWidget {
-  const _StudentDataTable({required this.students});
+  const _StudentDataTable({
+    required this.students,
+    required this.updatingBemMemberId,
+    required this.onBemMembershipChanged,
+  });
 
   final List<ManagedStudent> students;
+  final String? updatingBemMemberId;
+  final void Function(ManagedStudent student, bool shouldBeMember)
+  onBemMembershipChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -331,8 +386,10 @@ class _StudentDataTable extends StatelessWidget {
         child: DataTable(
           columns: const [
             DataColumn(label: Text('Nama Mahasiswa')),
+            DataColumn(label: Text('NIM')),
             DataColumn(label: Text('Asal Ormawa')),
             DataColumn(label: Text('Email')),
+            DataColumn(label: Text('BEM')),
             DataColumn(label: Text('Status')),
             DataColumn(label: Text('Poin'), numeric: true),
           ],
@@ -341,8 +398,16 @@ class _StudentDataTable extends StatelessWidget {
                 (student) => DataRow(
                   cells: [
                     DataCell(Text(student.name)),
+                    DataCell(Text(student.nim)),
                     DataCell(Text(student.ormawaName)),
                     DataCell(Text(student.email)),
+                    DataCell(
+                      _BemMembershipButton(
+                        student: student,
+                        isUpdating: updatingBemMemberId == student.id,
+                        onChanged: onBemMembershipChanged,
+                      ),
+                    ),
                     DataCell(_StatusChip(student: student)),
                     DataCell(Text('${student.points}')),
                   ],
@@ -356,9 +421,16 @@ class _StudentDataTable extends StatelessWidget {
 }
 
 class _StudentCard extends StatelessWidget {
-  const _StudentCard({required this.student});
+  const _StudentCard({
+    required this.student,
+    required this.isUpdatingBem,
+    required this.onBemMembershipChanged,
+  });
 
   final ManagedStudent student;
+  final bool isUpdatingBem;
+  final void Function(ManagedStudent student, bool shouldBeMember)
+  onBemMembershipChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -396,8 +468,27 @@ class _StudentCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               _StudentMeta(
+                icon: Icons.badge_outlined,
+                label: student.nim,
+              ),
+              const SizedBox(height: 4),
+              _StudentMeta(
                 icon: Icons.mail_outline_rounded,
                 label: student.email,
+              ),
+              const SizedBox(height: 4),
+              _StudentMeta(
+                icon: Icons.account_balance_outlined,
+                label: student.isBemMember ? 'Anggota BEM' : 'Belum masuk BEM',
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _BemMembershipButton(
+                  student: student,
+                  isUpdating: isUpdatingBem,
+                  onChanged: onBemMembershipChanged,
+                ),
               ),
               const SizedBox(height: 4),
               _StudentMeta(
@@ -444,6 +535,40 @@ class _StudentMeta extends StatelessWidget {
   }
 }
 
+class _BemMembershipButton extends StatelessWidget {
+  const _BemMembershipButton({
+    required this.student,
+    required this.isUpdating,
+    required this.onChanged,
+  });
+
+  final ManagedStudent student;
+  final bool isUpdating;
+  final void Function(ManagedStudent student, bool shouldBeMember) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isUpdating) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return OutlinedButton.icon(
+      onPressed: () => onChanged(student, !student.isBemMember),
+      icon: Icon(
+        student.isBemMember
+            ? Icons.person_remove_alt_1_outlined
+            : Icons.person_add_alt_1_rounded,
+        size: 18,
+      ),
+      label: Text(student.isBemMember ? 'Keluarkan' : 'Tambah BEM'),
+    );
+  }
+}
+
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.student});
 
@@ -464,16 +589,20 @@ class ManagedStudent {
   const ManagedStudent({
     required this.id,
     required this.name,
+    required this.nim,
     required this.email,
     required this.ormawaName,
+    required this.isBemMember,
     required this.points,
     required this.status,
   });
 
   final String id;
   final String name;
+  final String nim;
   final String email;
   final String ormawaName;
+  final bool isBemMember;
   final int points;
   final String status;
 
@@ -525,10 +654,20 @@ class ManagedStudent {
     return ManagedStudent(
       id: json['id_user']?.toString() ?? '',
       name: json['nama']?.toString() ?? '-',
+      nim:
+          json['nim']?.toString() ??
+          json['student_staff_id']?.toString() ??
+          json['nomor_induk']?.toString() ??
+          '-',
       email: json['email']?.toString() ?? '-',
       ormawaName: ormawa is Map<String, dynamic>
           ? ormawa['nama_ormawa']?.toString() ?? '-'
           : '-',
+      isBemMember:
+          json['bem_membership'] is Map<String, dynamic> &&
+          (json['bem_membership'] as Map<String, dynamic>)['status']
+                  ?.toString() ==
+              'aktif',
       points: int.tryParse(json['poin']?.toString() ?? '0') ?? 0,
       status: json['status_akun']?.toString() ?? '-',
     );

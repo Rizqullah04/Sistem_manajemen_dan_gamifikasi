@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\Ormawa;
 use App\Models\User;
+use App\Models\UserOrmawaMembership;
 use App\Services\PoinService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +19,16 @@ class UserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $users = User::with(['ormawa', 'adminProfile'])
+        $bemId = Ormawa::query()
+            ->where('nama_ormawa', 'like', '%BEM%')
+            ->value('id_ormawa');
+        $users = User::with([
+            'ormawa',
+            'adminProfile',
+            'ormawaMemberships' => fn ($query) => $query
+                ->when($bemId, fn ($membershipQuery, $id) => $membershipQuery->where('id_ormawa', $id))
+                ->with('ormawa'),
+        ])
             ->when($request->role, fn ($query, string $role) => $query->where('role', $role))
             ->latest()
             ->get();
@@ -40,6 +51,71 @@ class UserController extends Controller
             ->get();
 
         return $this->successResponse('Data anggota Ormawa berhasil diambil', UserResource::collection($members));
+    }
+
+    public function bemMembers(Request $request): JsonResponse
+    {
+        $bem = $this->resolveBemOrmawa($request);
+        if ($bem instanceof JsonResponse) {
+            return $bem;
+        }
+
+        $members = User::with([
+            'ormawa',
+            'ormawaMemberships' => fn ($query) => $query
+                ->where('id_ormawa', $bem->id_ormawa)
+                ->with('ormawa'),
+        ])
+            ->where('role', 'anggota')
+            ->latest()
+            ->get();
+
+        return $this->successResponse('Data anggota BEM berhasil diambil', UserResource::collection($members));
+    }
+
+    public function appointBemMember(Request $request): JsonResponse
+    {
+        $bem = $this->resolveBemOrmawa($request);
+        if ($bem instanceof JsonResponse) {
+            return $bem;
+        }
+
+        $data = $request->validate([
+            'id_user' => ['required', 'exists:users,id_user'],
+        ]);
+        $user = User::where('role', 'anggota')->findOrFail($data['id_user']);
+
+        UserOrmawaMembership::updateOrCreate([
+            'id_user' => $user->id_user,
+            'id_ormawa' => $bem->id_ormawa,
+        ], [
+            'status' => 'aktif',
+            'appointed_by' => $request->user()->id_user,
+        ]);
+
+        return $this->successResponse(
+            'Anggota berhasil ditambahkan ke BEM.',
+            new UserResource($user->fresh([
+                'ormawa',
+                'ormawaMemberships' => fn ($query) => $query
+                    ->where('id_ormawa', $bem->id_ormawa)
+                    ->with('ormawa'),
+            ]))
+        );
+    }
+
+    public function removeBemMember(Request $request, User $user): JsonResponse
+    {
+        $bem = $this->resolveBemOrmawa($request);
+        if ($bem instanceof JsonResponse) {
+            return $bem;
+        }
+
+        UserOrmawaMembership::where('id_user', $user->id_user)
+            ->where('id_ormawa', $bem->id_ormawa)
+            ->delete();
+
+        return $this->successResponse('Anggota berhasil dikeluarkan dari BEM.');
     }
 
     public function updateOrmawaMember(Request $request, User $user): JsonResponse
@@ -89,5 +165,33 @@ class UserController extends Controller
         $user->ormawa?->recalculateTotalPoin();
 
         return $this->successResponse('Poin user berhasil dihitung ulang', new UserResource($user->fresh(['ormawa', 'userBadges.badge'])));
+    }
+
+    private function resolveBemOrmawa(Request $request): Ormawa|JsonResponse
+    {
+        $user = $request->user();
+        if ($user->role === 'ormawa') {
+            $ormawa = $user->ormawa;
+            if ($ormawa === null || ! $this->isBemOrmawa($ormawa)) {
+                return $this->errorResponse('Fitur ini hanya tersedia untuk akun BEM.', status: 403);
+            }
+
+            return $ormawa;
+        }
+
+        $bem = Ormawa::query()
+            ->where('nama_ormawa', 'like', '%BEM%')
+            ->first();
+
+        if ($bem === null) {
+            return $this->errorResponse('Data BEM belum tersedia.', status: 422);
+        }
+
+        return $bem;
+    }
+
+    private function isBemOrmawa(Ormawa $ormawa): bool
+    {
+        return str_contains(strtolower($ormawa->nama_ormawa.' '.$ormawa->deskripsi), 'bem');
     }
 }

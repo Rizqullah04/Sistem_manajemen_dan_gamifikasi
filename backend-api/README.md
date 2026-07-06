@@ -54,8 +54,18 @@ php artisan migrate:fresh --seed
 Admin bawaan dari seeder:
 
 ```text
-email: admin@ormawa-awards.test
+email: dpm.ft@ormawa-app.test
 password: password
+```
+
+Akun Ormawa bawaan dari seeder:
+
+```text
+BEM   : bem@ormawa-app.test
+HMJTI : hmjti@ormawa-app.test
+HMTM  : hmtm@ormawa-app.test
+HMJTK : hmjtk@ormawa-app.test
+password semua akun: password
 ```
 
 ## Contoh .env MySQL
