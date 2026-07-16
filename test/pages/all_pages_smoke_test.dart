@@ -27,6 +27,10 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/domain/en
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/domain/entities/period_status.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/domain/repositories/dashboard_repository.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/domain/entities/leaderboard_entry.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/leaderboard/data/models/user_model.dart'
+    as leaderboard;
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/leaderboard/logic/leaderboard_provider.dart'
+    as leaderboard;
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/leaderboard/presentation/pages/leaderboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/entities/voting.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/voting/domain/repositories/voting_repository.dart';
@@ -279,6 +283,50 @@ const _memberUser = User(
   ormawaId: 'o1',
 );
 
+final _testLeaderboardUsers = [
+  leaderboard.UserModel(
+    id: 'u3',
+    name: 'Andi Pratama',
+    avatar: '',
+    points: 320,
+    rank: 1,
+    ormawa: 'o1',
+    isVerified: true,
+    isActive: true,
+    isTopContributor: true,
+  ),
+  leaderboard.UserModel(
+    id: 'u4',
+    name: 'Siti Rahma',
+    avatar: '',
+    points: 280,
+    rank: 2,
+    ormawa: 'o1',
+    isVerified: true,
+    isActive: true,
+  ),
+  leaderboard.UserModel(
+    id: 'u5',
+    name: 'Budi Santoso',
+    avatar: '',
+    points: 180,
+    rank: 3,
+    ormawa: 'o2',
+    isVerified: true,
+    isActive: true,
+  ),
+  leaderboard.UserModel(
+    id: 'u6',
+    name: 'Maya Putri',
+    avatar: '',
+    points: 120,
+    rank: 4,
+    ormawa: 'o3',
+    isVerified: true,
+    isActive: true,
+  ),
+];
+
 Future<void> _pumpPage(
   WidgetTester tester,
   Widget page, {
@@ -389,6 +437,20 @@ Future<void> _pumpPage(
         ),
         ormawaLeaderboardProvider.overrideWith(
           (ref) async => _FakeDashboardRepository._leaderboard,
+        ),
+        leaderboard.isLoadingProvider.overrideWithValue(false),
+        leaderboard.usersProvider.overrideWithValue(_testLeaderboardUsers),
+        leaderboard.top3Provider.overrideWithValue(
+          _testLeaderboardUsers.take(3).toList(),
+        ),
+        leaderboard.remainingUsersProvider.overrideWithValue(
+          _testLeaderboardUsers.skip(3).toList(),
+        ),
+        leaderboard.currentUserProvider.overrideWithValue(
+          _testLeaderboardUsers.first,
+        ),
+        leaderboard.currentLeaderboardEntryProvider.overrideWithValue(
+          _testLeaderboardUsers.first,
         ),
         votingRepositoryProvider.overrideWithValue(_FakeVotingRepository()),
         adminOrmawasProvider.overrideWith(
@@ -577,15 +639,13 @@ void main() {
     });
 
     testWidgets('member rank tab uses the new leaderboard UI', (tester) async {
-      await _pumpPage(tester, const MemberDashboardPage(), user: _memberUser);
-
-      await tester.tap(find.byIcon(Icons.menu_rounded));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Rank'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
-      await tester.pumpAndSettle();
+      await _pumpPage(
+        tester,
+        const LeaderboardPage(showAppBar: false, showBottomNavigation: false),
+        user: _memberUser,
+        settleAnimations: false,
+      );
+      await tester.pump(const Duration(milliseconds: 800));
 
       expect(find.text('Individu'), findsOneWidget);
       expect(find.text('Ormawa'), findsOneWidget);

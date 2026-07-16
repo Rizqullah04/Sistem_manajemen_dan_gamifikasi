@@ -9,7 +9,7 @@ class UpdateKategoriKegiatanRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'nama_kategori' => ['sometimes', 'string', 'max:255'],
+            'nama_kategori' => ['sometimes', 'string', 'max:100'],
             'deskripsi' => ['nullable', 'string'],
             'poin_dasar' => ['sometimes', 'integer', 'min:0'],
         ];

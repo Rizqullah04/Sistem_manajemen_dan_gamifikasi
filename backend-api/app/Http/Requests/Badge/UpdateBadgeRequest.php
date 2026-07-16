@@ -9,7 +9,7 @@ class UpdateBadgeRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'nama_badge' => ['sometimes', 'string', 'max:255'],
+            'nama_badge' => ['sometimes', 'string', 'max:100'],
             'deskripsi' => ['nullable', 'string'],
             'activity_type' => ['sometimes', 'string', 'in:Poin Kumulatif,Keaktifan Diskusi,Partisipasi Event,Voting Berhasil'],
             'minimal_poin' => ['sometimes', 'integer', 'min:0'],

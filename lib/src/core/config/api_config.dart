@@ -34,4 +34,21 @@ class ApiConfig {
 
     return trimmed;
   }
+
+  static String publicStorageUrl(String? pathOrUrl) {
+    final value = pathOrUrl?.trim() ?? '';
+    if (value.isEmpty) return '';
+
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.hasScheme && uri.host.isNotEmpty) return value;
+
+    final apiUri = Uri.parse(baseUrl);
+    var basePath = apiUri.path.replaceFirst(RegExp(r'/api/?$'), '');
+    basePath = basePath.replaceFirst(RegExp(r'/+$'), '');
+    final iconPath = value.replaceFirst(RegExp(r'^/+'), '');
+
+    return apiUri
+        .replace(path: '$basePath/storage/$iconPath', query: null, fragment: null)
+        .toString();
+  }
 }

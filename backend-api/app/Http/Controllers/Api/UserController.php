@@ -24,7 +24,6 @@ class UserController extends Controller
             ->value('id_ormawa');
         $users = User::with([
             'ormawa',
-            'adminProfile',
             'ormawaMemberships' => fn ($query) => $query
                 ->when($bemId, fn ($membershipQuery, $id) => $membershipQuery->where('id_ormawa', $id))
                 ->with('ormawa'),
@@ -155,7 +154,7 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return $this->successResponse('User berhasil diperbarui', new UserResource($user->fresh(['ormawa', 'adminProfile'])));
+        return $this->successResponse('User berhasil diperbarui', new UserResource($user->fresh('ormawa')));
     }
 
     public function recalculatePoin(User $user, PoinService $poinService): JsonResponse

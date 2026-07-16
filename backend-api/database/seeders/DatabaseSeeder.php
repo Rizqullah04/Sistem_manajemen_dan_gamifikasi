@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\AdminProfile;
 use App\Models\Leaderboard;
 use App\Models\Period;
 use App\Models\Ormawa;
@@ -31,7 +30,7 @@ class DatabaseSeeder extends Seeder
             'ormawa@ormawa-app.test',
         ])->delete();
 
-        $admin = User::updateOrCreate([
+        User::updateOrCreate([
             'email' => 'dpm.ft@ormawa-app.test',
         ], [
             'nama' => 'DPM Fakultas Teknik',
@@ -39,14 +38,6 @@ class DatabaseSeeder extends Seeder
             'role' => 'admin',
             'status_akun' => 'aktif',
             'id_ormawa' => null,
-        ]);
-
-        AdminProfile::updateOrCreate([
-            'id_user' => $admin->id_user,
-        ], [
-            'tipe_admin' => 'DPM',
-            'jabatan' => 'Admin Fakultas Teknik',
-            'unit_kerja' => 'Fakultas Teknik',
         ]);
 
         $ormawaSeeds = [

@@ -31,6 +31,14 @@ class OrmawaAwardController extends Controller
         'attendance' => 20,
     ];
 
+    private const DPM_CRITERIA = [
+        'kedisiplinan' => 'Kedisiplinan',
+        'kekompakan' => 'Kekompakan',
+        'komunikasi' => 'Komunikasi',
+        'keaktifan' => 'Keaktifan',
+        'kesuksesan_proker' => 'Kesuksesan ProKer',
+    ];
+
     public function preview(Request $request): JsonResponse
     {
         $payload = $this->validatePayload($request);
@@ -49,6 +57,14 @@ class OrmawaAwardController extends Controller
         if (empty($awardPayload['entries'])) {
             throw ValidationException::withMessages([
                 'periode' => ['Tidak ada Ormawa yang dapat dinilai pada periode ini.'],
+            ]);
+        }
+
+        $incompleteEntry = collect($awardPayload['entries'])
+            ->first(fn (array $entry) => $entry['predicate'] === 'Belum Lengkap');
+        if ($incompleteEntry !== null) {
+            throw ValidationException::withMessages([
+                'rubric_scores' => ['Lengkapi skor rubrik DPM FT untuk '.$incompleteEntry['name'].'.'],
             ]);
         }
 
@@ -76,8 +92,19 @@ class OrmawaAwardController extends Controller
                     'periode' => $periode,
                     'starts_on' => $payload['starts_on'],
                     'ends_on' => $payload['ends_on'],
-                    'criteria_weights' => $awardPayload['criteria_weights'],
-                    'metrics' => $entry['metrics'],
+                    'criteria_weights' => [
+                        'mode' => $awardPayload['award_mode'],
+                        'criteria' => $awardPayload['criteria'],
+                        'legacy_activity_weights' => $awardPayload['criteria_weights'],
+                    ],
+                    'metrics' => [
+                        'system_metrics' => $entry['metrics'],
+                        'legacy_score_components' => $entry['score_components'],
+                        'legacy_total_score' => $entry['legacy_total_score'],
+                        'rubric_scores' => $entry['rubric_scores'],
+                        'rubric_notes' => $entry['rubric_notes'],
+                        'predicate' => $entry['predicate'],
+                    ],
                     'total_score' => $entry['total_score'],
                     'ranking' => $entry['ranking'],
                     'calculated_at' => now(),
@@ -115,6 +142,12 @@ class OrmawaAwardController extends Controller
             'weights.voting' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'weights.discussion' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'weights.attendance' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'rubric_scores' => ['nullable', 'array'],
+            'rubric_scores.*.kedisiplinan' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rubric_scores.*.kekompakan' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rubric_scores.*.komunikasi' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rubric_scores.*.kesuksesan_proker' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rubric_scores.*.notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $period = isset($payload['period_id'])
@@ -139,6 +172,7 @@ class OrmawaAwardController extends Controller
             'ends_on' => Carbon::parse($endsOn)->toDateString(),
             'weights' => array_map(fn ($value) => (float) $value, $weights),
             'weight_total' => (float) $weightTotal,
+            'rubric_scores' => $payload['rubric_scores'] ?? [],
         ];
     }
 
@@ -179,6 +213,16 @@ class OrmawaAwardController extends Controller
                 'starts_on' => $payload['starts_on'],
                 'ends_on' => $payload['ends_on'],
             ],
+            'award_mode' => 'dpm_ft_rubric',
+            'criteria' => collect(self::DPM_CRITERIA)
+                ->map(fn (string $label, string $code) => [
+                    'code' => $code,
+                    'label' => $label,
+                    'max_score' => 5,
+                    'source' => $code === 'keaktifan' ? 'system' : 'manual',
+                ])
+                ->values()
+                ->all(),
             'criteria_weights' => $payload['weights'],
             'criteria_weight_total' => $payload['weight_total'],
             'normalization_max' => $max,
@@ -242,16 +286,75 @@ class OrmawaAwardController extends Controller
     private function scoreEntry(array $entry, array $payload, array $max): array
     {
         $metrics = $entry['metrics'];
-        $components = [
+        $legacyComponents = [
             'points' => ($metrics['points'] / $max['points']) * $payload['weights']['points'],
             'voting' => ($metrics['voting_votes'] / $max['voting']) * $payload['weights']['voting'],
             'discussion' => ($metrics['discussions'] / $max['discussion']) * $payload['weights']['discussion'],
             'attendance' => ($metrics['attendance'] / $max['attendance']) * $payload['weights']['attendance'],
         ];
 
-        $entry['score_components'] = array_map(fn ($value) => round($value, 2), $components);
-        $entry['total_score'] = round(array_sum($components) / $payload['weight_total'] * 100, 2);
+        $manualScores = $payload['rubric_scores'][$entry['id_ormawa']] ?? [];
+        $activityScore = $this->systemActivityScore($metrics['points'], $max['points']);
+        $rubricScores = [
+            'kedisiplinan' => $this->rubricScore($manualScores['kedisiplinan'] ?? null),
+            'kekompakan' => $this->rubricScore($manualScores['kekompakan'] ?? null),
+            'komunikasi' => $this->rubricScore($manualScores['komunikasi'] ?? null),
+            'keaktifan' => $activityScore,
+            'kesuksesan_proker' => $this->rubricScore($manualScores['kesuksesan_proker'] ?? null),
+        ];
+        $filledScores = array_filter($rubricScores, fn (?int $score) => $score !== null);
+        $averageScore = count($filledScores) === count(self::DPM_CRITERIA)
+            ? round(array_sum($filledScores) / count(self::DPM_CRITERIA), 2)
+            : 0.0;
+
+        $entry['score_components'] = array_map(fn ($value) => round($value, 2), $legacyComponents);
+        $entry['legacy_total_score'] = round(array_sum($legacyComponents) / $payload['weight_total'] * 100, 2);
+        $entry['rubric_scores'] = $rubricScores;
+        $entry['rubric_score_labels'] = self::DPM_CRITERIA;
+        $entry['rubric_notes'] = $manualScores['notes'] ?? null;
+        $entry['total_score'] = $averageScore;
+        $entry['predicate'] = $this->predicate($averageScore);
+        $entry['metrics']['system_activity_score'] = $activityScore;
+        $entry['metrics']['system_activity_basis'] = 'Dihitung dari total poin aktivitas Ormawa dibandingkan capaian tertinggi pada periode yang sama.';
 
         return $entry;
+    }
+
+    private function rubricScore(mixed $score): ?int
+    {
+        if ($score === null || $score === '') {
+            return null;
+        }
+
+        return max(1, min(5, (int) $score));
+    }
+
+    private function systemActivityScore(int $points, int $maxPoints): int
+    {
+        if ($points <= 0 || $maxPoints <= 0) {
+            return 1;
+        }
+
+        $ratio = $points / $maxPoints;
+
+        return match (true) {
+            $ratio >= 0.8 => 5,
+            $ratio >= 0.6 => 4,
+            $ratio >= 0.4 => 3,
+            $ratio >= 0.2 => 2,
+            default => 1,
+        };
+    }
+
+    private function predicate(float $score): string
+    {
+        return match (true) {
+            $score >= 4.5 => 'Istimewa',
+            $score >= 3.5 => 'Baik',
+            $score >= 2.5 => 'Cukup',
+            $score >= 1.5 => 'Kurang',
+            $score > 0 => 'Buruk',
+            default => 'Belum Lengkap',
+        };
     }
 }

@@ -133,9 +133,11 @@ class _ProfilePointCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Student Achievement',
-                      style: TextStyle(
+                    Text(
+                      data.isOrmawa
+                          ? 'Ormawa Achievement'
+                          : 'Student Achievement',
+                      style: const TextStyle(
                         color: _GamificationColors.muted,
                         fontSize: 14,
                         height: 1.35,
@@ -445,16 +447,13 @@ class _FeaturedBadgeCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            isUnlocked ? Icons.shield_rounded : Icons.shield_outlined,
-            color: _GamificationColors.gold,
+          _StudentBadgeIcon(
+            imageUrl: badge.icon,
             size: 74,
-            shadows: [
-              Shadow(
-                color: _GamificationColors.gold.withValues(alpha: 0.55),
-                blurRadius: 26,
-              ),
-            ],
+            color: _GamificationColors.gold,
+            fallbackIcon: isUnlocked
+                ? Icons.shield_rounded
+                : Icons.shield_outlined,
           ),
           const SizedBox(height: 22),
           Text(
@@ -574,12 +573,15 @@ class _CollectionBadgeTile extends StatelessWidget {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: accent.withValues(alpha: 0.18),
-                  child: Icon(
-                    isUnlocked
-                        ? Icons.emoji_events_outlined
-                        : Icons.military_tech_outlined,
-                    color: accent,
-                    size: 25,
+                  child: ClipOval(
+                    child: _StudentBadgeIcon(
+                      imageUrl: badge.icon,
+                      size: 48,
+                      color: accent,
+                      fallbackIcon: isUnlocked
+                          ? Icons.emoji_events_outlined
+                          : Icons.military_tech_outlined,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -628,6 +630,36 @@ class _CollectionBadgeTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StudentBadgeIcon extends StatelessWidget {
+  const _StudentBadgeIcon({
+    required this.imageUrl,
+    required this.size,
+    required this.color,
+    required this.fallbackIcon,
+  });
+
+  final String? imageUrl;
+  final double size;
+  final Color color;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Icon(fallbackIcon, color: color, size: size * 0.65);
+    final url = imageUrl?.trim() ?? '';
+    if (url.isEmpty) return fallback;
+
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+      errorBuilder: (_, _, _) => fallback,
     );
   }
 }

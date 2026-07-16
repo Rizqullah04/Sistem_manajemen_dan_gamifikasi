@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/config/api_config.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
@@ -109,7 +110,7 @@ class _BadgeSettingsContentState extends ConsumerState<_BadgeSettingsContent> {
                     const EmptyState(
                       title: 'Belum ada lencana',
                       subtitle:
-                          'Tambahkan lencana pertama untuk menentukan ambang batas poin anggota.',
+                          'Tambahkan lencana pertama untuk menentukan ambang batas poin mahasiswa dan Ormawa.',
                       icon: Icons.military_tech_outlined,
                     )
                   else
@@ -308,7 +309,7 @@ class _BadgeHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Kelola kategori lencana dan ambang batas poin yang dipakai sistem untuk memvalidasi kelayakan anggota secara otomatis.',
+                    'Kelola kategori lencana dan ambang batas poin untuk mahasiswa dan Ormawa secara otomatis.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -429,9 +430,12 @@ class _BadgeCard extends StatelessWidget {
           children: [
             CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Icon(
-                Icons.military_tech_outlined,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              child: ClipOval(
+                child: _BadgeNetworkIcon(
+                  imageUrl: badge.iconUrl,
+                  size: 40,
+                  fallbackColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -467,11 +471,6 @@ class _BadgeCard extends StatelessWidget {
                         icon: Icons.category_outlined,
                         label: badge.activityType,
                       ),
-                      if (badge.icon.isNotEmpty)
-                        _InfoChip(
-                          icon: Icons.image_outlined,
-                          label: badge.icon,
-                        ),
                     ],
                   ),
                 ],
@@ -640,7 +639,7 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selectedActivityType,
+                  initialValue: _selectedActivityType,
                   items: _activityTypeOptions
                       .map(
                         (type) => DropdownMenuItem<String>(
@@ -674,8 +673,8 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
                     return null;
                   },
                   builder: (field) {
-                    final fileName =
-                        _selectedIcon?.name ?? widget.initial?.icon ?? '';
+                    final fileName = _selectedIcon?.name;
+                    final hasStoredIcon = widget.initial?.iconUrl.isNotEmpty ?? false;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -684,15 +683,15 @@ class _BadgeFormDialogState extends State<_BadgeFormDialog> {
                           onPressed: _pickIcon,
                           icon: const Icon(Icons.upload_file_outlined),
                           label: Text(
-                            fileName.isEmpty
+                            fileName == null && !hasStoredIcon
                                 ? 'Pilih Icon PNG'
                                 : 'Ganti Icon PNG',
                           ),
                         ),
-                        if (fileName.isNotEmpty) ...[
+                        if (fileName != null || hasStoredIcon) ...[
                           const SizedBox(height: 8),
                           Text(
-                            fileName,
+                            fileName ?? 'Icon saat ini sudah tersimpan',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -860,6 +859,7 @@ class GamificationBadge {
     required this.activityType,
     required this.minimumPoints,
     required this.icon,
+    this.iconUrl = '',
   });
 
   final String id;
@@ -868,8 +868,10 @@ class GamificationBadge {
   final String activityType;
   final int minimumPoints;
   final String icon;
+  final String iconUrl;
 
   factory GamificationBadge.fromJson(Map<String, dynamic> json) {
+    final iconPath = json['icon']?.toString() ?? '';
     return GamificationBadge(
       id: json['id']?.toString() ?? '',
       name: json['nama_badge']?.toString() ?? '-',
@@ -877,7 +879,41 @@ class GamificationBadge {
       activityType: json['activity_type']?.toString() ?? 'Poin Kumulatif',
       minimumPoints:
           int.tryParse(json['minimal_poin']?.toString() ?? '0') ?? 0,
-      icon: json['icon']?.toString() ?? '',
+      icon: iconPath,
+      iconUrl: ApiConfig.publicStorageUrl(
+        iconPath.isNotEmpty ? iconPath : json['icon_url']?.toString(),
+      ),
+    );
+  }
+}
+
+class _BadgeNetworkIcon extends StatelessWidget {
+  const _BadgeNetworkIcon({
+    required this.imageUrl,
+    required this.size,
+    required this.fallbackColor,
+  });
+
+  final String imageUrl;
+  final double size;
+  final Color fallbackColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Icon(
+      Icons.military_tech_outlined,
+      color: fallbackColor,
+      size: size * 0.6,
+    );
+    if (imageUrl.isEmpty) return fallback;
+
+    return Image.network(
+      imageUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+      errorBuilder: (_, _, _) => fallback,
     );
   }
 }

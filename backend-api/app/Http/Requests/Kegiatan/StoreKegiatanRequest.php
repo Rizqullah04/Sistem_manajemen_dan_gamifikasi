@@ -10,7 +10,7 @@ class StoreKegiatanRequest extends ApiFormRequest
     {
         return [
             'id_ormawa' => ['required', 'exists:ormawas,id_ormawa'],
-            'nama_kegiatan' => ['required', 'string', 'max:255'],
+            'nama_kegiatan' => ['required', 'string', 'max:150'],
             'deskripsi' => ['required', 'string'],
             'tanggal' => ['required', 'date'],
             'poin_kegiatan' => ['required', 'integer', 'min:0'],

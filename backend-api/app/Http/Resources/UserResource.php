@@ -42,7 +42,6 @@ class UserResource extends JsonResource
                     'notes' => $userBadge->notes,
                 ])
                 ->values()),
-            'admin_profile' => $this->whenLoaded('adminProfile', fn () => new AdminProfileResource($this->adminProfile)),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

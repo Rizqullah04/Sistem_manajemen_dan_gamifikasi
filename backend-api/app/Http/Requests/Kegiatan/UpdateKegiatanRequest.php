@@ -10,7 +10,7 @@ class UpdateKegiatanRequest extends ApiFormRequest
     {
         return [
             'id_ormawa' => ['sometimes', 'exists:ormawas,id_ormawa'],
-            'nama_kegiatan' => ['sometimes', 'string', 'max:255'],
+            'nama_kegiatan' => ['sometimes', 'string', 'max:150'],
             'deskripsi' => ['sometimes', 'string'],
             'tanggal' => ['sometimes', 'date'],
             'poin_kegiatan' => ['sometimes', 'integer', 'min:0'],

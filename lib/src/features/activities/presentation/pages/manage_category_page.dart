@@ -31,7 +31,6 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
           seedColor: const Color(0xFF8B5CF6),
           brightness: Brightness.dark,
         ),
-        useMaterial3: true,
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFF080B1F),

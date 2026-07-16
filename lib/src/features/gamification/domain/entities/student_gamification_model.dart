@@ -1,3 +1,5 @@
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/config/api_config.dart';
+
 class StudentGamificationModel {
   const StudentGamificationModel({
     required this.studentId,
@@ -7,6 +9,7 @@ class StudentGamificationModel {
     required this.availableBadges,
     required this.activityStatus,
     required this.pointLogs,
+    this.profileType = 'student',
   });
 
   final String studentId;
@@ -16,6 +19,9 @@ class StudentGamificationModel {
   final List<StudentBadgeModel> availableBadges;
   final StudentActivityStatus activityStatus;
   final List<StudentPointLogModel> pointLogs;
+  final String profileType;
+
+  bool get isOrmawa => profileType == 'ormawa';
 
   factory StudentGamificationModel.fromJson(Map<String, dynamic> json) {
     final logsData = json['poin_logs'];
@@ -56,6 +62,7 @@ class StudentGamificationModel {
       pointLogs: pointLogs,
       badges: badges,
       availableBadges: availableBadges,
+      profileType: json['profile_type']?.toString() ?? 'student',
     );
   }
 }
@@ -88,6 +95,7 @@ class StudentBadgeModel {
           '',
     );
     final rawStatus = json['status']?.toString().toLowerCase().trim();
+    final iconPath = json['icon']?.toString() ?? '';
 
     return StudentBadgeModel(
       id: json['id']?.toString() ?? '',
@@ -99,7 +107,9 @@ class StudentBadgeModel {
       status: rawStatus == null || rawStatus.isEmpty
           ? (awardedAt == null ? 'locked' : 'unlocked')
           : rawStatus,
-      icon: json['icon']?.toString(),
+      icon: ApiConfig.publicStorageUrl(
+        iconPath.isNotEmpty ? iconPath : json['icon_url']?.toString(),
+      ),
       awardedAt: awardedAt,
     );
   }

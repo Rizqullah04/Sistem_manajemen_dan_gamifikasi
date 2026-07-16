@@ -62,10 +62,11 @@ class PeriodResetCard extends ConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Akhiri periode?'),
+          title: const Text('Akhiri Periode Gamifikasi?'),
           content: Text(
             'Data poin dan ranking periode ${activePeriod.name} akan disimpan, '
-            'lalu poin anggota dan Ormawa di periode baru akan direset menjadi 0.',
+            'lalu poin anggota dan Ormawa di periode baru akan direset menjadi 0. '
+            'Tindakan ini tidak diperlukan untuk menyimpan penilaian bulanan Ormawa Awards.',
           ),
           actions: [
             TextButton(
@@ -115,7 +116,7 @@ class _PeriodContent extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Manajemen Periode',
+                'Manajemen Periode Gamifikasi',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -124,12 +125,12 @@ class _PeriodContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        _InfoRow(label: 'Periode aktif', value: active.name),
-        _InfoRow(label: 'Rentang', value: _periodRange(active)),
-        _InfoRow(label: 'Riwayat periode', value: '$archivedCount tersimpan'),
+        _InfoRow(label: 'Periode gamifikasi aktif', value: active.name),
+        _InfoRow(label: 'Rentang gamifikasi', value: _periodRange(active)),
+        _InfoRow(label: 'Riwayat gamifikasi', value: '$archivedCount tersimpan'),
         const SizedBox(height: 12),
         Text(
-          'Saat periode diakhiri, snapshot ranking dan poin disimpan sebagai arsip. Badge lama tetap tercatat, sementara poin periode baru dimulai lagi dari 0.',
+          'Gunakan akhir periode hanya saat siklus gamifikasi selesai, misalnya setiap semester. Penilaian bulanan Ormawa Awards tidak mereset poin. Saat periode ini diakhiri, snapshot ranking dan poin diarsipkan lalu poin periode baru dimulai dari 0.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.outline,
               ),
@@ -145,7 +146,9 @@ class _PeriodContent extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.restart_alt_rounded),
-            label: Text(isLoading ? 'Memproses...' : 'Akhiri Periode & Reset Poin'),
+            label: Text(
+              isLoading ? 'Memproses...' : 'Akhiri Gamifikasi & Reset Poin',
+            ),
           ),
         ),
       ],

@@ -8,7 +8,8 @@ Menyimpan data akun pengguna.
 
 - `id_user` sebagai primary key
 - `id_ormawa` relasi ke `ormawas`, nullable
-- Digunakan oleh banyak tabel lain seperti `admin_profiles`, `verifikasis`, `vote_details`, `diskusis`, `like_kegiatans`, `chats`, `poin_logs`, `leaderboard_details`, dan `penilaians`
+- Akun dengan `role = admin` merupakan Admin DPM Fakultas Teknik
+- Digunakan oleh banyak tabel lain seperti `verifikasis`, `vote_details`, `diskusis`, `like_kegiatans`, `chats`, `poin_logs`, `leaderboard_details`, dan `penilaians`
 
 ## 2. ormawas
 
@@ -25,14 +26,7 @@ Menyimpan master kategori kegiatan.
 - `nama_kategori` bersifat unique
 - Menjadi induk untuk `kegiatans` melalui kolom `kategori_id`
 
-## 4. admin_profiles
-
-Menyimpan detail tambahan untuk user yang berperan sebagai admin.
-
-- `id_admin_profile` sebagai primary key
-- `id_user` relasi one-to-one ke `users`
-
-## 5. badges
+## 4. badges
 
 Menyimpan master badge yang bisa diperoleh ormawa.
 
@@ -40,7 +34,7 @@ Menyimpan master badge yang bisa diperoleh ormawa.
 - `nama_badge` bersifat unique
 - Menjadi induk untuk `ormawa_badges`
 
-## 6. kegiatans
+## 5. kegiatans
 
 Menyimpan data kegiatan yang dibuat oleh ormawa.
 
@@ -49,7 +43,7 @@ Menyimpan data kegiatan yang dibuat oleh ormawa.
 - `kategori_id` relasi ke `kategori_kegiatans`, nullable
 - Menjadi induk untuk `dokumentasi_kegiatans`, `verifikasis`, `votings`, `diskusis`, `like_kegiatans`, dan `penilaians`
 
-## 7. dokumentasi_kegiatans
+## 6. dokumentasi_kegiatans
 
 Menyimpan file atau dokumentasi kegiatan.
 
@@ -57,7 +51,7 @@ Menyimpan file atau dokumentasi kegiatan.
 - `id_kegiatan` relasi ke `kegiatans`
 - `id_ormawa` relasi ke `ormawas`
 
-## 8. verifikasis
+## 7. verifikasis
 
 Menyimpan proses verifikasi kegiatan oleh admin.
 
@@ -65,7 +59,7 @@ Menyimpan proses verifikasi kegiatan oleh admin.
 - `id_kegiatan` relasi ke `kegiatans`
 - `id_admin` relasi ke `users`
 
-## 9. penilaians
+## 8. penilaians
 
 Menyimpan nilai kegiatan dari juri/admin.
 
@@ -74,7 +68,7 @@ Menyimpan nilai kegiatan dari juri/admin.
 - `juri_id` relasi ke `users`
 - Kombinasi `kegiatan_id` dan `juri_id` bersifat unique
 
-## 10. votings
+## 9. votings
 
 Menyimpan data voting yang berhubungan dengan kegiatan.
 
@@ -83,7 +77,7 @@ Menyimpan data voting yang berhubungan dengan kegiatan.
 - `id_ormawa` relasi ke `ormawas`, nullable
 - Menjadi induk untuk `vote_details`
 
-## 11. vote_details
+## 10. vote_details
 
 Menyimpan detail pilihan user dalam voting.
 
@@ -92,7 +86,7 @@ Menyimpan detail pilihan user dalam voting.
 - `id_user` relasi ke `users`
 - Kombinasi `id_voting` dan `id_user` bersifat unique
 
-## 12. diskusis
+## 11. diskusis
 
 Menyimpan komentar atau diskusi pada kegiatan.
 
@@ -101,7 +95,7 @@ Menyimpan komentar atau diskusi pada kegiatan.
 - `id_user` relasi ke `users`
 - `parent_id` relasi ke `diskusis.id_diskusi` untuk balasan komentar
 
-## 13. like_kegiatans
+## 12. like_kegiatans
 
 Menyimpan data like dari user pada kegiatan.
 
@@ -110,7 +104,7 @@ Menyimpan data like dari user pada kegiatan.
 - `id_user` relasi ke `users`
 - Kombinasi `id_kegiatan` dan `id_user` bersifat unique
 
-## 14. chats
+## 13. chats
 
 Menyimpan pesan antar user.
 
@@ -118,7 +112,7 @@ Menyimpan pesan antar user.
 - `id_pengirim` relasi ke `users`
 - `id_penerima` relasi ke `users`
 
-## 15. poin_logs
+## 14. poin_logs
 
 Menyimpan riwayat perubahan poin.
 
@@ -127,14 +121,14 @@ Menyimpan riwayat perubahan poin.
 - `id_ormawa` relasi ke `ormawas`, nullable
 - `referensi_id` menyimpan ID sumber poin, tetapi tidak dibuat sebagai foreign key langsung karena sumbernya bisa berbeda-beda
 
-## 16. leaderboards
+## 15. leaderboards
 
 Menyimpan data header leaderboard.
 
 - `id_leaderboard` sebagai primary key
 - Menjadi induk untuk `leaderboard_details`
 
-## 17. leaderboard_details
+## 16. leaderboard_details
 
 Menyimpan detail ranking leaderboard.
 
@@ -144,7 +138,7 @@ Menyimpan detail ranking leaderboard.
 - `id_ormawa` relasi ke `ormawas`, nullable
 - Constraint: hanya salah satu dari `id_user` atau `id_ormawa` yang boleh terisi
 
-## 18. ormawa_badges
+## 17. ormawa_badges
 
 Menyimpan badge yang sudah diperoleh tiap ormawa.
 
@@ -153,7 +147,7 @@ Menyimpan badge yang sudah diperoleh tiap ormawa.
 - `badge_id` relasi ke `badges`
 - Kombinasi `ormawa_id` dan `badge_id` bersifat unique
 
-## 19. personal_access_tokens
+## 18. personal_access_tokens
 
 Menyimpan token autentikasi Laravel Sanctum.
 

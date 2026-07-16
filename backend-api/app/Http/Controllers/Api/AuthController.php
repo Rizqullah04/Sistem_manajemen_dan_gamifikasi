@@ -9,6 +9,7 @@ use App\Http\Resources\BadgeResource;
 use App\Http\Resources\PoinLogResource;
 use App\Http\Resources\UserResource;
 use App\Models\Badge;
+use App\Models\OrmawaBadge;
 use App\Models\Period;
 use App\Models\User;
 use App\Support\ApiResponse;
@@ -116,6 +117,44 @@ class AuthController extends Controller
     {
         $user = $request->user()->load(['userBadges.badge']);
         $activePeriodId = Period::where('status', 'active')->latest('starts_on')->value('id_period');
+
+        if ($user->role === 'ormawa' && $user->ormawa !== null) {
+            $ormawa = $user->ormawa;
+            $totalPoin = (int) $ormawa->total_poin;
+            $earnedBadges = OrmawaBadge::where('ormawa_id', $ormawa->id_ormawa)
+                ->get()
+                ->keyBy('badge_id');
+            $availableBadges = Badge::orderBy('minimal_poin')
+                ->get()
+                ->map(function (Badge $badge) use ($request, $earnedBadges, $totalPoin): array {
+                    $earnedBadge = $earnedBadges->get($badge->id);
+                    $isUnlocked = $earnedBadge !== null || $totalPoin >= (int) $badge->minimal_poin;
+
+                    return [
+                        ...((new BadgeResource($badge))->toArray($request)),
+                        'status' => $isUnlocked ? 'unlocked' : 'locked',
+                        'awarded_at' => $earnedBadge?->tanggal_diperoleh?->toISOString(),
+                    ];
+                })
+                ->values();
+            $poinLogs = $ormawa->poinLogs()
+                ->when($activePeriodId, fn ($query, int $periodId) => $query->where('id_period', $periodId))
+                ->latest('tanggal')
+                ->get();
+
+            return $this->successResponse('Data gamifikasi Ormawa berhasil diambil', [
+                'profile_type' => 'ormawa',
+                'id_user' => $ormawa->id_ormawa,
+                'nama' => $ormawa->nama_ormawa,
+                'total_poin' => $totalPoin,
+                'poin' => $totalPoin,
+                'status_akun' => $user->status_akun,
+                'badges' => $availableBadges->where('status', 'unlocked')->values(),
+                'available_badges' => $availableBadges,
+                'poin_logs' => PoinLogResource::collection($poinLogs),
+            ]);
+        }
+
         $poinLogs = $user->poinLogs()
             ->when($activePeriodId, fn ($query, int $periodId) => $query->where('id_period', $periodId))
             ->latest('tanggal')
@@ -135,6 +174,7 @@ class AuthController extends Controller
             ->values();
 
         return $this->successResponse('Data gamifikasi mahasiswa berhasil diambil', [
+            'profile_type' => 'student',
             'id_user' => $user->id_user,
             'nama' => $user->nama,
             'total_poin' => (int) $user->poin,

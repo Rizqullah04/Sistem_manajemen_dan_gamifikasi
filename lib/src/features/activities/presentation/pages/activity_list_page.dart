@@ -173,7 +173,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedCategory,
+                        initialValue: selectedCategory,
                         dropdownColor: const Color(0xFF111827),
                         decoration: const InputDecoration(
                           labelText: 'Kategori',

@@ -419,7 +419,6 @@ Tabel domain utama:
 
 - `users`
 - `ormawas`
-- `admin_profiles`
 - `kategori_kegiatans`
 - `kegiatans`
 - `dokumentasi_kegiatans`
@@ -492,12 +491,14 @@ Badge awal disediakan melalui seeder:
 
 ### 12.4 Periode
 
-Periode digunakan untuk membatasi akumulasi poin pada rentang waktu tertentu. Saat periode diakhiri:
+Periode gamifikasi digunakan untuk membatasi akumulasi poin pada rentang waktu tertentu dan disarankan mengikuti satu semester. Saat periode diakhiri:
 
 1. Sistem membuat snapshot peringkat user dan ormawa.
 2. Periode aktif diarsipkan.
 3. Poin anggota dan ormawa direset.
 4. Periode baru dibuat sebagai periode aktif.
+
+Periode gamifikasi berbeda dari rentang penilaian Ormawa Awards. Rentang penilaian dapat dibuat bulanan dan hanya menyaring data yang dinilai; menyimpan hasil Ormawa Awards tidak mengakhiri periode gamifikasi dan tidak mereset poin.
 
 ## 13. Status Penting
 
@@ -647,4 +648,3 @@ Beberapa hal yang perlu diperhatikan untuk pengembangan lanjutan:
 - Menambahkan mekanisme auto-award badge berdasarkan poin.
 - Menambahkan validasi file upload dokumentasi kegiatan.
 - Menambahkan pagination untuk data kegiatan, user, diskusi, dan leaderboard.
-

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\AdminProfileController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\ChatController;
@@ -44,7 +43,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::apiResource('users', UserController::class)->only(['index', 'update']);
         Route::patch('/users/{user}/recalculate-poin', [UserController::class, 'recalculatePoin']);
-        Route::apiResource('admin-profiles', AdminProfileController::class)->only(['index', 'store', 'update']);
         Route::get('/admin/ormawas', [OrmawaController::class, 'adminIndex']);
         Route::apiResource('ormawas', OrmawaController::class)->except(['index', 'show']);
         Route::get('/periods/current', [PeriodController::class, 'current']);

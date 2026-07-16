@@ -41,11 +41,8 @@ class _AdminOrmawaAwardsContentState
   final _periodController = TextEditingController();
   final _startController = TextEditingController();
   final _endController = TextEditingController();
-  final _pointsWeightController = TextEditingController(text: '40');
-  final _votingWeightController = TextEditingController(text: '20');
-  final _discussionWeightController = TextEditingController(text: '20');
-  final _attendanceWeightController = TextEditingController(text: '20');
   final _dateFormat = DateFormat('yyyy-MM-dd');
+  final Map<int, _DpmRubricScore> _rubricScores = {};
 
   OrmawaAwardPreview? _preview;
   bool _isLoading = false;
@@ -55,9 +52,12 @@ class _AdminOrmawaAwardsContentState
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _periodController.text = 'Ormawa Awards ${now.year}';
-    _startController.text = _dateFormat.format(DateTime(now.year));
-    _endController.text = _dateFormat.format(DateTime(now.year, 12, 31));
+    final month = now.month.toString().padLeft(2, '0');
+    _periodController.text = 'Ormawa Awards ${now.year}-$month';
+    _startController.text = _dateFormat.format(DateTime(now.year, now.month));
+    _endController.text = _dateFormat.format(
+      DateTime(now.year, now.month + 1, 0),
+    );
     Future.microtask(_loadPreview);
   }
 
@@ -66,10 +66,6 @@ class _AdminOrmawaAwardsContentState
     _periodController.dispose();
     _startController.dispose();
     _endController.dispose();
-    _pointsWeightController.dispose();
-    _votingWeightController.dispose();
-    _discussionWeightController.dispose();
-    _attendanceWeightController.dispose();
     super.dispose();
   }
 
@@ -124,7 +120,7 @@ class _AdminOrmawaAwardsContentState
                   children: [
                     const EmptyState(
                       title: 'Preview belum tersedia',
-                      subtitle: 'Isi periode dan bobot, lalu muat preview.',
+                      subtitle: 'Isi rentang penilaian, lalu muat preview.',
                       icon: Icons.fact_check_outlined,
                     ),
                     FilledButton.icon(
@@ -135,7 +131,11 @@ class _AdminOrmawaAwardsContentState
                   ],
                 )
               else
-                _AwardsTable(preview: _preview!),
+                _AwardsTable(
+                  preview: _preview!,
+                  scores: _rubricScores,
+                  onScoreChanged: _setRubricScore,
+                ),
             ],
           ),
         );
@@ -155,7 +155,7 @@ class _AdminOrmawaAwardsContentState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Periode dan Kriteria',
+                'Rentang Penilaian dan Kriteria',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -164,11 +164,11 @@ class _AdminOrmawaAwardsContentState
               TextFormField(
                 controller: _periodController,
                 decoration: const InputDecoration(
-                  labelText: 'Nama Periode Penilaian',
+                  labelText: 'Nama Rentang Penilaian',
                   prefixIcon: Icon(Icons.calendar_month_outlined),
                   border: OutlineInputBorder(),
                 ),
-                validator: _required('Nama periode wajib diisi'),
+                validator: _required('Nama rentang penilaian wajib diisi'),
               ),
               const SizedBox(height: 12),
               Row(
@@ -191,29 +191,7 @@ class _AdminOrmawaAwardsContentState
                 ],
               ),
               const SizedBox(height: 16),
-              _WeightField(
-                controller: _pointsWeightController,
-                label: 'Poin',
-                icon: Icons.stars_outlined,
-              ),
-              const SizedBox(height: 10),
-              _WeightField(
-                controller: _votingWeightController,
-                label: 'Voting',
-                icon: Icons.how_to_vote_outlined,
-              ),
-              const SizedBox(height: 10),
-              _WeightField(
-                controller: _discussionWeightController,
-                label: 'Diskusi',
-                icon: Icons.forum_outlined,
-              ),
-              const SizedBox(height: 10),
-              _WeightField(
-                controller: _attendanceWeightController,
-                label: 'Kehadiran',
-                icon: Icons.fact_check_outlined,
-              ),
+              const _RubricInfo(),
             ],
           ),
         ),
@@ -248,10 +226,8 @@ class _AdminOrmawaAwardsContentState
             ),
             _SummaryRow(
               icon: Icons.percent_rounded,
-              label: 'Total Bobot',
-              value: preview == null
-                  ? '-'
-                  : preview.weightTotal.toStringAsFixed(0),
+              label: 'Kriteria DPM',
+              value: preview == null ? '-' : '5',
             ),
             _SummaryRow(
               icon: Icons.emoji_events_outlined,
@@ -297,7 +273,10 @@ class _AdminOrmawaAwardsContentState
           );
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) {
-        setState(() => _preview = OrmawaAwardPreview.fromJson(data));
+        setState(() {
+          _preview = OrmawaAwardPreview.fromJson(data);
+          _syncRubricScores();
+        });
       }
     } on DioException catch (error) {
       _showError(_errorMessage(error));
@@ -308,6 +287,7 @@ class _AdminOrmawaAwardsContentState
 
   Future<void> _generateAwards() async {
     if (!_validateForm()) return;
+    if (!_validateRubricScores()) return;
     setState(() => _isSaving = true);
     try {
       final response = await ref
@@ -318,7 +298,10 @@ class _AdminOrmawaAwardsContentState
           );
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) {
-        setState(() => _preview = OrmawaAwardPreview.fromJson(data));
+        setState(() {
+          _preview = OrmawaAwardPreview.fromJson(data);
+          _syncRubricScores();
+        });
       }
       ref.invalidate(ormawaLeaderboardProvider);
       if (!mounted) return;
@@ -339,17 +322,23 @@ class _AdminOrmawaAwardsContentState
     final start = DateTime.tryParse(_startController.text);
     final end = DateTime.tryParse(_endController.text);
     if (start == null || end == null || end.isBefore(start)) {
-      _showError('Tanggal periode tidak valid.');
+      _showError('Tanggal rentang penilaian tidak valid.');
       return false;
     }
 
-    final totalWeight = _weight(_pointsWeightController) +
-        _weight(_votingWeightController) +
-        _weight(_discussionWeightController) +
-        _weight(_attendanceWeightController);
-    if (totalWeight <= 0) {
-      _showError('Total bobot harus lebih dari 0.');
-      return false;
+    return true;
+  }
+
+  bool _validateRubricScores() {
+    final entries = _preview?.entries ?? const <OrmawaAwardEntry>[];
+    for (final entry in entries) {
+      final score = _rubricScores[entry.ormawaId];
+      if (score == null || !score.isComplete) {
+        _showError(
+          'Lengkapi skor Kedisiplinan, Kekompakan, Komunikasi, dan Kesuksesan ProKer untuk ${entry.name}.',
+        );
+        return false;
+      }
     }
 
     return true;
@@ -361,16 +350,29 @@ class _AdminOrmawaAwardsContentState
       'starts_on': _startController.text.trim(),
       'ends_on': _endController.text.trim(),
       'weights': {
-        'points': _weight(_pointsWeightController),
-        'voting': _weight(_votingWeightController),
-        'discussion': _weight(_discussionWeightController),
-        'attendance': _weight(_attendanceWeightController),
+        'points': 40,
+        'voting': 20,
+        'discussion': 20,
+        'attendance': 20,
       },
+      'rubric_scores': _rubricScores.map(
+        (id, score) => MapEntry(id.toString(), score.toJson()),
+      ),
     };
   }
 
-  double _weight(TextEditingController controller) {
-    return double.tryParse(controller.text.replaceAll(',', '.')) ?? 0;
+  void _syncRubricScores() {
+    final entries = _preview?.entries ?? const <OrmawaAwardEntry>[];
+    for (final entry in entries) {
+      _rubricScores.putIfAbsent(
+        entry.ormawaId,
+        () => _DpmRubricScore.fromEntry(entry),
+      );
+    }
+  }
+
+  void _setRubricScore(int ormawaId, _DpmRubricScore score) {
+    setState(() => _rubricScores[ormawaId] = score);
   }
 
   void _showError(String message) {
@@ -412,8 +414,8 @@ class _HeaderCard extends StatelessWidget {
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            SizedBox(
-              width: 520,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -425,7 +427,7 @@ class _HeaderCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Hitung peringkat berdasarkan poin, voting, diskusi, dan kehadiran dalam periode penilaian.',
+                    'DPM FT mengisi skor rubrik 1-5 berdasarkan penilaian dan bukti kegiatan. Sistem menghitung Keaktifan otomatis dari data aktivitas, lalu menyimpan peringkat.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -494,35 +496,44 @@ class _DateField extends StatelessWidget {
   }
 }
 
-class _WeightField extends StatelessWidget {
-  const _WeightField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
+class _RubricInfo extends StatelessWidget {
+  const _RubricInfo();
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: 'Bobot $label',
-        prefixIcon: Icon(icon),
-        suffixText: '%',
-        border: const OutlineInputBorder(),
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
       ),
-      validator: (value) {
-        final parsed = double.tryParse((value ?? '').replaceAll(',', '.'));
-        if (parsed == null || parsed < 0 || parsed > 100) {
-          return 'Bobot 0 sampai 100';
-        }
-        return null;
-      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Rubrik DPM FT',
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Nilai 1-5 bukan dibuat otomatis oleh sistem. DPM FT mengisi Kedisiplinan, Kekompakan, Komunikasi, dan Kesuksesan ProKer berdasarkan rubrik penilaian serta bukti/observasi kegiatan. Keaktifan dihitung otomatis dari poin aktivitas Ormawa pada periode ini.',
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Skala: 1 sangat kurang, 2 kurang, 3 cukup, 4 baik, 5 sangat baik.',
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -546,8 +557,21 @@ class _SummaryRow extends StatelessWidget {
         children: [
           Icon(icon, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 10),
-          Expanded(child: Text(label)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Expanded(
+            flex: 2,
+            child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
         ],
       ),
     );
@@ -555,9 +579,15 @@ class _SummaryRow extends StatelessWidget {
 }
 
 class _AwardsTable extends StatelessWidget {
-  const _AwardsTable({required this.preview});
+  const _AwardsTable({
+    required this.preview,
+    required this.scores,
+    required this.onScoreChanged,
+  });
 
   final OrmawaAwardPreview preview;
+  final Map<int, _DpmRubricScore> scores;
+  final void Function(int ormawaId, _DpmRubricScore score) onScoreChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -578,28 +608,111 @@ class _AwardsTable extends StatelessWidget {
           columns: const [
             DataColumn(label: Text('Rank')),
             DataColumn(label: Text('Ormawa')),
-            DataColumn(label: Text('Kegiatan')),
-            DataColumn(label: Text('Poin')),
-            DataColumn(label: Text('Voting')),
-            DataColumn(label: Text('Diskusi')),
-            DataColumn(label: Text('Kehadiran')),
-            DataColumn(label: Text('Nilai')),
+            DataColumn(label: Text('Disiplin')),
+            DataColumn(label: Text('Kompak')),
+            DataColumn(label: Text('Komunikasi')),
+            DataColumn(label: Text('Keaktifan')),
+            DataColumn(label: Text('ProKer')),
+            DataColumn(label: Text('Rata-rata')),
+            DataColumn(label: Text('Predikat')),
+            DataColumn(label: Text('Data Sistem')),
           ],
           rows: preview.entries.map((entry) {
+            final score = scores[entry.ormawaId] ?? _DpmRubricScore.fromEntry(entry);
             return DataRow(
               cells: [
                 DataCell(Text('#${entry.ranking}')),
                 DataCell(Text(entry.name)),
-                DataCell(Text('${entry.metrics.activities}')),
-                DataCell(Text('${entry.metrics.points}')),
-                DataCell(Text('${entry.metrics.votingVotes}')),
-                DataCell(Text('${entry.metrics.discussions}')),
-                DataCell(Text('${entry.metrics.attendance}')),
+                DataCell(
+                  _ScoreSelect(
+                    value: score.kedisiplinan,
+                    onChanged: (value) => onScoreChanged(
+                      entry.ormawaId,
+                      score.copyWith(kedisiplinan: value),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  _ScoreSelect(
+                    value: score.kekompakan,
+                    onChanged: (value) => onScoreChanged(
+                      entry.ormawaId,
+                      score.copyWith(kekompakan: value),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  _ScoreSelect(
+                    value: score.komunikasi,
+                    onChanged: (value) => onScoreChanged(
+                      entry.ormawaId,
+                      score.copyWith(komunikasi: value),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Tooltip(
+                    message: entry.metrics.systemActivityBasis,
+                    child: Chip(
+                      label: Text('${entry.metrics.systemActivityScore}'),
+                      avatar: const Icon(Icons.auto_graph_outlined, size: 16),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  _ScoreSelect(
+                    value: score.kesuksesanProker,
+                    onChanged: (value) => onScoreChanged(
+                      entry.ormawaId,
+                      score.copyWith(kesuksesanProker: value),
+                    ),
+                  ),
+                ),
                 DataCell(Text(entry.totalScore.toStringAsFixed(2))),
+                DataCell(Text(entry.predicate)),
+                DataCell(
+                  Text(
+                    'Kegiatan ${entry.metrics.activities} | Poin ${entry.metrics.points} | Voting ${entry.metrics.votingVotes} | Diskusi ${entry.metrics.discussions} | Hadir ${entry.metrics.attendance}',
+                  ),
+                ),
               ],
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+}
+
+class _ScoreSelect extends StatelessWidget {
+  const _ScoreSelect({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final int? value;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 88,
+      child: DropdownButtonFormField<int>(
+        initialValue: value,
+        isDense: true,
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        ),
+        items: const [1, 2, 3, 4, 5]
+            .map(
+              (score) => DropdownMenuItem<int>(
+                value: score,
+                child: Text('$score'),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
       ),
     );
   }
@@ -632,27 +745,44 @@ class OrmawaAwardPreview {
 
 class OrmawaAwardEntry {
   const OrmawaAwardEntry({
+    required this.ormawaId,
     required this.name,
     required this.ranking,
     required this.totalScore,
+    required this.predicate,
     required this.metrics,
+    required this.rubricScores,
   });
 
+  final int ormawaId;
   final String name;
   final int ranking;
   final double totalScore;
+  final String predicate;
   final OrmawaAwardMetrics metrics;
+  final Map<String, int?> rubricScores;
 
   factory OrmawaAwardEntry.fromJson(Map<String, dynamic> json) {
     return OrmawaAwardEntry(
+      ormawaId: int.tryParse(json['id_ormawa']?.toString() ?? '0') ?? 0,
       name: json['name']?.toString() ?? '-',
       ranking: int.tryParse(json['ranking']?.toString() ?? '0') ?? 0,
       totalScore: double.tryParse(json['total_score']?.toString() ?? '0') ?? 0,
+      predicate: json['predicate']?.toString() ?? 'Belum Lengkap',
       metrics: OrmawaAwardMetrics.fromJson(
         json['metrics'] is Map<String, dynamic>
             ? json['metrics'] as Map<String, dynamic>
             : const <String, dynamic>{},
       ),
+      rubricScores: _parseRubricScores(json['rubric_scores']),
+    );
+  }
+
+  static Map<String, int?> _parseRubricScores(Object? data) {
+    if (data is! Map<String, dynamic>) return const <String, int?>{};
+
+    return data.map(
+      (key, value) => MapEntry(key, int.tryParse(value?.toString() ?? '')),
     );
   }
 }
@@ -664,6 +794,8 @@ class OrmawaAwardMetrics {
     required this.votingVotes,
     required this.discussions,
     required this.attendance,
+    required this.systemActivityScore,
+    required this.systemActivityBasis,
   });
 
   final int activities;
@@ -671,6 +803,8 @@ class OrmawaAwardMetrics {
   final int votingVotes;
   final int discussions;
   final int attendance;
+  final int systemActivityScore;
+  final String systemActivityBasis;
 
   factory OrmawaAwardMetrics.fromJson(Map<String, dynamic> json) {
     return OrmawaAwardMetrics(
@@ -679,6 +813,63 @@ class OrmawaAwardMetrics {
       votingVotes: int.tryParse(json['voting_votes']?.toString() ?? '0') ?? 0,
       discussions: int.tryParse(json['discussions']?.toString() ?? '0') ?? 0,
       attendance: int.tryParse(json['attendance']?.toString() ?? '0') ?? 0,
+      systemActivityScore:
+          int.tryParse(json['system_activity_score']?.toString() ?? '1') ?? 1,
+      systemActivityBasis:
+          json['system_activity_basis']?.toString() ??
+          'Dihitung dari data aktivitas sistem.',
     );
+  }
+}
+
+class _DpmRubricScore {
+  const _DpmRubricScore({
+    this.kedisiplinan,
+    this.kekompakan,
+    this.komunikasi,
+    this.kesuksesanProker,
+  });
+
+  final int? kedisiplinan;
+  final int? kekompakan;
+  final int? komunikasi;
+  final int? kesuksesanProker;
+
+  bool get isComplete =>
+      kedisiplinan != null &&
+      kekompakan != null &&
+      komunikasi != null &&
+      kesuksesanProker != null;
+
+  factory _DpmRubricScore.fromEntry(OrmawaAwardEntry entry) {
+    return _DpmRubricScore(
+      kedisiplinan: entry.rubricScores['kedisiplinan'],
+      kekompakan: entry.rubricScores['kekompakan'],
+      komunikasi: entry.rubricScores['komunikasi'],
+      kesuksesanProker: entry.rubricScores['kesuksesan_proker'],
+    );
+  }
+
+  _DpmRubricScore copyWith({
+    int? kedisiplinan,
+    int? kekompakan,
+    int? komunikasi,
+    int? kesuksesanProker,
+  }) {
+    return _DpmRubricScore(
+      kedisiplinan: kedisiplinan ?? this.kedisiplinan,
+      kekompakan: kekompakan ?? this.kekompakan,
+      komunikasi: komunikasi ?? this.komunikasi,
+      kesuksesanProker: kesuksesanProker ?? this.kesuksesanProker,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (kedisiplinan != null) 'kedisiplinan': kedisiplinan,
+      if (kekompakan != null) 'kekompakan': kekompakan,
+      if (komunikasi != null) 'komunikasi': komunikasi,
+      if (kesuksesanProker != null) 'kesuksesan_proker': kesuksesanProker,
+    };
   }
 }

@@ -16,6 +16,9 @@ class BadgeResource extends JsonResource
             'activity_type' => $this->activity_type,
             'minimal_poin' => $this->minimal_poin,
             'icon' => $this->icon,
+            'icon_url' => $this->icon
+                ? $request->getSchemeAndHttpHost().'/storage/'.ltrim($this->icon, '/')
+                : null,
             'tanggal_diperoleh' => $this->pivot?->tanggal_diperoleh,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

@@ -9,6 +9,7 @@ use App\Http\Resources\BadgeResource;
 use App\Models\Badge;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
 
 class BadgeController extends Controller
@@ -23,6 +24,12 @@ class BadgeController extends Controller
     public function store(StoreBadgeRequest $request): JsonResponse
     {
         $data = $request->validated();
+        if (! $request->hasFile('icon')) {
+            throw ValidationException::withMessages([
+                'icon' => ['Icon lencana wajib berupa file PNG.'],
+            ]);
+        }
+
         $data['icon'] = $request->file('icon')->store('badges', 'public');
 
         $badge = Badge::create($data);

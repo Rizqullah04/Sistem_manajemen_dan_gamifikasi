@@ -14,11 +14,6 @@ Enum status_akun {
   nonaktif
 }
 
-Enum tipe_admin {
-  DPM
-  staff_dosen
-}
-
 Enum status_kegiatan {
   pending
   valid
@@ -69,17 +64,6 @@ Table users {
   id_ormawa bigint [null]
   status_akun status_akun [default: 'aktif']
   remember_token varchar [null]
-  created_at timestamp [null]
-  updated_at timestamp [null]
-}
-
-Table admin_profiles {
-  id_admin_profile bigint [pk, increment]
-  id_user bigint [not null, unique]
-  tipe_admin tipe_admin [not null]
-  nip_nidn varchar [null]
-  jabatan varchar [null]
-  unit_kerja varchar [null]
   created_at timestamp [null]
   updated_at timestamp [null]
 }
@@ -293,7 +277,6 @@ Table personal_access_tokens {
 }
 
 Ref: users.id_ormawa > ormawas.id_ormawa [delete: set null]
-Ref: admin_profiles.id_user > users.id_user [delete: cascade]
 Ref: kegiatans.id_ormawa > ormawas.id_ormawa [delete: cascade]
 Ref: kegiatans.kategori_id > kategori_kegiatans.id [delete: set null]
 Ref: dokumentasi_kegiatans.id_kegiatan > kegiatans.id_kegiatan [delete: cascade]

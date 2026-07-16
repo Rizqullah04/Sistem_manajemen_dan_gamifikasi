@@ -28,12 +28,12 @@ class VotingController extends Controller
     {
         $data = $request->validate([
             'id_kegiatan' => ['nullable', 'exists:kegiatans,id_kegiatan'],
-            'judul_voting' => ['required', 'string', 'max:255'],
+            'judul_voting' => ['required', 'string', 'max:150'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after:tanggal_mulai'],
             'jenis_voting' => ['required', Rule::in(['kegiatan', 'ketua'])],
             'poll_options' => ['required', 'array', 'min:2'],
-            'poll_options.*' => ['required', 'string', 'max:255'],
+            'poll_options.*' => ['required', 'string', 'max:150'],
             'status' => ['sometimes', Rule::in(['aktif', 'selesai'])],
         ]);
 
@@ -74,12 +74,12 @@ class VotingController extends Controller
     {
         $data = $request->validate([
             'id_kegiatan' => ['sometimes', 'nullable', 'exists:kegiatans,id_kegiatan'],
-            'judul_voting' => ['sometimes', 'string', 'max:255'],
+            'judul_voting' => ['sometimes', 'string', 'max:150'],
             'tanggal_mulai' => ['sometimes', 'date'],
             'tanggal_selesai' => ['sometimes', 'date', 'after:tanggal_mulai'],
             'jenis_voting' => ['sometimes', Rule::in(['kegiatan', 'ketua'])],
             'poll_options' => ['sometimes', 'array', 'min:2'],
-            'poll_options.*' => ['required_with:poll_options', 'string', 'max:255'],
+            'poll_options.*' => ['required_with:poll_options', 'string', 'max:150'],
             'status' => ['sometimes', Rule::in(['aktif', 'selesai'])],
         ]);
 

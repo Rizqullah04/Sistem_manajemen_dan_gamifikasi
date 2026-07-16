@@ -9,7 +9,7 @@ class StoreOrmawaRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'nama_ormawa' => ['required', 'string', 'max:255', 'unique:ormawas,nama_ormawa'],
+            'nama_ormawa' => ['required', 'string', 'max:150', 'unique:ormawas,nama_ormawa'],
             'deskripsi' => ['nullable', 'string'],
             'total_poin' => ['sometimes', 'integer', 'min:0'],
             'account_name' => ['nullable', 'string', 'max:100'],

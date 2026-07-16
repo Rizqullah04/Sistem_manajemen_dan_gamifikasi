@@ -15,7 +15,7 @@ class UpdateOrmawaRequest extends ApiFormRequest
             'nama_ormawa' => [
                 'sometimes',
                 'string',
-                'max:255',
+                'max:150',
                 Rule::unique('ormawas', 'nama_ormawa')->ignore($ormawaId, 'id_ormawa'),
             ],
             'deskripsi' => ['nullable', 'string'],

@@ -30,7 +30,7 @@ class DokumentasiKegiatanController extends Controller
         $data = $request->validate([
             'id_kegiatan' => ['required', 'exists:kegiatans,id_kegiatan'],
             'caption' => ['nullable', 'string'],
-            'file_url' => ['required', 'string', 'max:255'],
+            'file_url' => ['required', 'string', 'max:2048'],
         ]);
 
         $kegiatan = Kegiatan::findOrFail($data['id_kegiatan']);

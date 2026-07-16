@@ -51,8 +51,9 @@ class CommentRepositoryImpl implements CommentRepository {
       ),
     );
     final data = response.data?['data'];
-    if (data is! List)
+    if (data is! List) {
       throw const AppException('Response diskusi tidak valid.');
+    }
     return data.whereType<Map<String, dynamic>>().map(_mapComment).toList();
   }
 

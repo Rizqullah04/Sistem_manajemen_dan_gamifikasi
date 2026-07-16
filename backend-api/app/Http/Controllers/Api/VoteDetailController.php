@@ -19,7 +19,7 @@ class VoteDetailController extends Controller
     {
         $data = $request->validate([
             'id_voting' => ['required', 'exists:votings,id_voting'],
-            'pilihan' => ['required', 'string', 'max:255'],
+            'pilihan' => ['required', 'string', 'max:150'],
         ]);
 
         $voting = Voting::findOrFail($data['id_voting']);
