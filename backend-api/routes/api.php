@@ -59,6 +59,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/periods/end-current', [PeriodController::class, 'endCurrent']);
         Route::post('/ormawa-awards/preview', [OrmawaAwardController::class, 'preview']);
         Route::post('/ormawa-awards/generate', [OrmawaAwardController::class, 'generate']);
+        Route::get('/ormawa-awards/history', [OrmawaAwardController::class, 'history']);
+        Route::delete('/ormawa-awards/history/{result}', [OrmawaAwardController::class, 'destroyHistory']);
         Route::apiResource('badges', BadgeController::class);
         Route::apiResource('activity-types', ActivityTypeController::class);
         Route::apiResource('kategori-kegiatans', KategoriKegiatanController::class)->except(['index', 'show']);

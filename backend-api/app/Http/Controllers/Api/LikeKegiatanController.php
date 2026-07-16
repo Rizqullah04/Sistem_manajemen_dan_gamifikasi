@@ -33,11 +33,15 @@ class LikeKegiatanController extends Controller
             ->where('id_user', $request->user()->id_user)
             ->delete();
 
-        if ($like->wasRecentlyCreated) {
+        if ($like->wasRecentlyCreated && $request->user()->role === 'anggota') {
             $poinService->tambahPoinUser($request->user(), 'like', $like->id_like, 1, 'Memberi like kegiatan');
         }
 
-        return $this->successResponse('Like kegiatan berhasil disimpan', new LikeKegiatanResource($like->load('user')), 201);
+        $message = $request->user()->role === 'anggota'
+            ? 'Like kegiatan berhasil disimpan dan 1 poin diberikan.'
+            : 'Like kegiatan berhasil disimpan tanpa poin.';
+
+        return $this->successResponse($message, new LikeKegiatanResource($like->load('user')), 201);
     }
 
     public function destroy(LikeKegiatan $likeKegiatan, PoinService $poinService): JsonResponse

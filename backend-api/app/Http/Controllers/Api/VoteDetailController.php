@@ -17,12 +17,19 @@ class VoteDetailController extends Controller
 
     public function store(Request $request, PoinService $poinService): JsonResponse
     {
+        if ($request->user()->role !== 'anggota') {
+            return $this->errorResponse('Voting dan poin partisipasi hanya tersedia untuk mahasiswa.', status: 403);
+        }
+
         $data = $request->validate([
             'id_voting' => ['required', 'exists:votings,id_voting'],
             'pilihan' => ['required', 'string', 'max:150'],
         ]);
 
         $voting = Voting::findOrFail($data['id_voting']);
+        if (! $voting->canBeVotedBy($request->user())) {
+            return $this->errorResponse($voting->votingEligibilityMessage($request->user()), status: 403);
+        }
         if ($voting->status !== 'aktif' || now()->lt($voting->tanggal_mulai) || now()->gt($voting->tanggal_selesai)) {
             return $this->errorResponse('Voting tidak sedang aktif.', status: 422);
         }

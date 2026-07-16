@@ -42,18 +42,8 @@ class _VotingLogPageState extends State<VotingLogPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF8B5CF6),
-          brightness: Brightness.dark,
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: const Color(0xFF080B1F),
+    return Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFF080B1F),
-          foregroundColor: Colors.white,
           title: const Text('Log Riwayat Voting'),
           actions: [
             if (widget.canClearLogs && _completedVotes.isNotEmpty)
@@ -86,7 +76,6 @@ class _VotingLogPageState extends State<VotingLogPage> {
                   );
                 },
               ),
-      ),
     );
   }
 

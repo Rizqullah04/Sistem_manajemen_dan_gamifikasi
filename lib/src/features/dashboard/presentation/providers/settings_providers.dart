@@ -6,18 +6,21 @@ class DashboardSettings {
     required this.notificationsEnabled,
     required this.discussionNotificationsEnabled,
     required this.compactDashboardEnabled,
+    required this.darkModeEnabled,
     required this.language,
   });
 
   final bool notificationsEnabled;
   final bool discussionNotificationsEnabled;
   final bool compactDashboardEnabled;
+  final bool darkModeEnabled;
   final String language;
 
   DashboardSettings copyWith({
     bool? notificationsEnabled,
     bool? discussionNotificationsEnabled,
     bool? compactDashboardEnabled,
+    bool? darkModeEnabled,
     String? language,
   }) {
     return DashboardSettings(
@@ -28,6 +31,7 @@ class DashboardSettings {
           this.discussionNotificationsEnabled,
       compactDashboardEnabled:
           compactDashboardEnabled ?? this.compactDashboardEnabled,
+      darkModeEnabled: darkModeEnabled ?? this.darkModeEnabled,
       language: language ?? this.language,
     );
   }
@@ -44,6 +48,7 @@ class DashboardSettingsController
       'dashboard_discussion_notifications_enabled';
   static const _compactDashboardKey = 'dashboard_compact_enabled';
   static const _languageKey = 'dashboard_language';
+  static const _darkModeKey = 'dashboard_dark_mode_enabled';
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -53,6 +58,7 @@ class DashboardSettingsController
         discussionNotificationsEnabled:
             prefs.getBool(_discussionNotificationsKey) ?? true,
         compactDashboardEnabled: prefs.getBool(_compactDashboardKey) ?? false,
+        darkModeEnabled: prefs.getBool(_darkModeKey) ?? true,
         language: prefs.getString(_languageKey) ?? 'Indonesia',
       ),
     );
@@ -78,6 +84,10 @@ class DashboardSettingsController
     );
   }
 
+  Future<void> setDarkModeEnabled(bool value) async {
+    await _update((settings) => settings.copyWith(darkModeEnabled: value));
+  }
+
   Future<void> setLanguage(String value) async {
     await _update((settings) => settings.copyWith(language: value));
   }
@@ -98,6 +108,7 @@ class DashboardSettingsController
       next.discussionNotificationsEnabled,
     );
     await prefs.setBool(_compactDashboardKey, next.compactDashboardEnabled);
+    await prefs.setBool(_darkModeKey, next.darkModeEnabled);
     await prefs.setString(_languageKey, next.language);
   }
 }

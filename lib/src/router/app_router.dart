@@ -10,6 +10,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentat
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_data_management_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_awards_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_awards_history_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_student_management_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/dashboard_leaderboard_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/member_dashboard_page.dart';
@@ -98,6 +99,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/ormawa-awards',
         builder: (context, state) => const AdminOrmawaAwardsPage(),
+      ),
+      GoRoute(
+        path: '/admin/ormawa-awards/history',
+        builder: (context, state) => const AdminOrmawaAwardsHistoryPage(),
       ),
       GoRoute(
         path: '/admin/gamification/badges',

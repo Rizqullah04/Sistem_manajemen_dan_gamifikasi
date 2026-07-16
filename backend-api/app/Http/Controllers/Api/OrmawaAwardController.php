@@ -49,6 +49,59 @@ class OrmawaAwardController extends Controller
         );
     }
 
+    public function history(): JsonResponse
+    {
+        $histories = OrmawaAwardResult::with('ormawa')
+            ->orderByDesc('calculated_at')
+            ->get()
+            ->groupBy('periode')
+            ->map(function ($items, string $periode): array {
+                $first = $items->first();
+
+                return [
+                    'history_id' => $first->id_ormawa_award_result,
+                    'periode' => $periode,
+                    'starts_on' => $first->starts_on?->toDateString(),
+                    'ends_on' => $first->ends_on?->toDateString(),
+                    'calculated_at' => $first->calculated_at?->toISOString(),
+                    'criteria' => $first->criteria_weights['criteria'] ?? [],
+                    'entries' => $items->sortBy('ranking')->values()->map(fn (OrmawaAwardResult $item): array => [
+                        'ormawa' => $item->ormawa?->nama_ormawa ?? 'Ormawa',
+                        'ranking' => $item->ranking,
+                        'total_score' => (float) $item->total_score,
+                        'predicate' => $item->metrics['predicate'] ?? '-',
+                        'rubric_scores' => $item->metrics['rubric_scores'] ?? [],
+                        'rubric_notes' => $item->metrics['rubric_notes'] ?? null,
+                        'system_metrics' => $item->metrics['system_metrics'] ?? [],
+                    ])->all(),
+                ];
+            })
+            ->values();
+
+        return $this->successResponse('Riwayat Ormawa Awards berhasil diambil', $histories);
+    }
+
+    public function destroyHistory(OrmawaAwardResult $result): JsonResponse
+    {
+        $periode = $result->periode;
+        $deleted = DB::transaction(function () use ($periode): int {
+            $leaderboards = Leaderboard::where('tipe', 'ormawa')
+                ->where('periode', 'ormawa_awards:'.$periode)
+                ->get();
+            foreach ($leaderboards as $leaderboard) {
+                $leaderboard->details()->delete();
+                $leaderboard->delete();
+            }
+
+            return OrmawaAwardResult::where('periode', $periode)->delete();
+        });
+
+        return $this->successResponse('Riwayat Ormawa Awards berhasil dihapus', [
+            'periode' => $periode,
+            'deleted_entries' => $deleted,
+        ]);
+    }
+
     public function generate(Request $request): JsonResponse
     {
         $payload = $this->validatePayload($request);

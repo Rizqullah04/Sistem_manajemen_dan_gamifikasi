@@ -25,6 +25,7 @@ class KegiatanController extends Controller
         $kegiatans = Kegiatan::with(['ormawa', 'kategori', 'votings', 'verifikasis.admin', 'dokumentasiKegiatans'])
             ->withCount('likeKegiatans')
             ->withCount('dislikeKegiatans')
+            ->withCount('diskusis')
             ->withExists(['likeKegiatans as disukai_user' => fn ($query) => $query->where('id_user', $request->user()->id_user)])
             ->withExists(['dislikeKegiatans as tidak_disukai_user' => fn ($query) => $query->where('id_user', $request->user()->id_user)])
             ->when($request->user()->role === 'ormawa', function ($query) use ($request) {
@@ -133,9 +134,7 @@ class KegiatanController extends Controller
                 'tanggal_verifikasi' => now(),
             ]);
 
-            if ($data['status'] === Kegiatan::STATUS_VALID && $statusLama !== Kegiatan::STATUS_VALID) {
-                $poinService->tambahPoinOrmawa($lockedKegiatan->ormawa, 'kegiatan', $lockedKegiatan->id_kegiatan, $lockedKegiatan->poin_kegiatan, 'Kegiatan valid');
-            } elseif ($statusLama === Kegiatan::STATUS_VALID && $data['status'] !== Kegiatan::STATUS_VALID) {
+            if ($statusLama === Kegiatan::STATUS_VALID && $data['status'] !== Kegiatan::STATUS_VALID) {
                 $poinService->batalkanPoinOrmawa($lockedKegiatan->ormawa, 'kegiatan', $lockedKegiatan->id_kegiatan);
             } else {
                 $lockedKegiatan->ormawa->recalculateTotalPoin();

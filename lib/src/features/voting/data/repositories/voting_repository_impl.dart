@@ -170,6 +170,9 @@ class VotingRepositoryImpl implements VotingRepository {
       options: options,
       voterIds: voters,
       status: _statusFrom(json['status']),
+      scope: json['voting_scope']?.toString() ?? 'faculty',
+      canVote: json['can_vote'] == true || json['can_vote'] == 1,
+      eligibilityMessage: json['eligibility_message']?.toString() ?? '',
     );
   }
 

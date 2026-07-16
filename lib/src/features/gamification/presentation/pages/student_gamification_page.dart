@@ -13,10 +13,7 @@ class StudentGamificationPage extends ConsumerWidget {
     final state = ref.watch(studentGamificationControllerProvider);
 
     return Scaffold(
-      backgroundColor: _GamificationColors.background,
       appBar: AppBar(
-        backgroundColor: _GamificationColors.surface,
-        foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
           'Badge & Pencapaian',
@@ -45,7 +42,7 @@ class StudentGamificationPage extends ConsumerWidget {
         ),
         data: (data) => RefreshIndicator(
           color: _GamificationColors.gold,
-          backgroundColor: _GamificationColors.surface,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onRefresh: () => ref
               .read(studentGamificationControllerProvider.notifier)
               .reload(),

@@ -1056,7 +1056,8 @@ class _VotingCard extends ConsumerWidget {
       (sum, option) => sum + option.votes,
     );
     final hasVoted = user != null && voting.voterIds.contains(user.id);
-    final canUseVote = user?.role == UserRole.memberAccount;
+    final isStudent = user?.role == UserRole.memberAccount;
+    final canUseVote = isStudent && voting.canVote;
     final creatorOrmawaName = voting.creatorName;
     final periodText =
         '${DateFormat('dd MMM').format(voting.startDate)} - ${DateFormat('dd MMM yyyy').format(voting.endDate)}';
@@ -1087,6 +1088,15 @@ class _VotingCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _OrmawaCreatorBadge(name: creatorOrmawaName),
+              const SizedBox(height: 6),
+              Text(
+                voting.scope == 'organization'
+                    ? 'Khusus anggota aktif $creatorOrmawaName'
+                    : 'Terbuka untuk seluruh mahasiswa fakultas',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
               const SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1174,7 +1184,9 @@ class _VotingCard extends ConsumerWidget {
               }),
               if (user != null && !canUseVote)
                 Text(
-                  'Voting tersedia untuk seluruh akun mahasiswa aktif. Akun admin dan Ormawa bertindak sebagai pengelola voting.',
+                  voting.eligibilityMessage.isEmpty
+                      ? 'Anda tidak memenuhi syarat untuk mengikuti voting ini.'
+                      : voting.eligibilityMessage,
                 ),
               if (hasVoted) const Text('Anda sudah menggunakan hak suara.'),
             ],

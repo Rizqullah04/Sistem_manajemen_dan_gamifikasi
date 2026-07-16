@@ -164,10 +164,8 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
             final hasDocumentation = docsController.text.trim().isNotEmpty;
 
             return AlertDialog(
-              backgroundColor: const Color(0xFF0B1024),
               title: Text(
                 isEditing ? 'Edit Kegiatan' : 'Input Kegiatan',
-                style: const TextStyle(color: Colors.white),
               ),
               content: Form(
                 key: formKey,
@@ -177,7 +175,6 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                     children: [
                       TextFormField(
                         controller: titleController,
-                        style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
                           labelText: 'Judul',
                           prefixIcon: Icon(Icons.event_note_outlined),
@@ -189,7 +186,6 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: descController,
-                        style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
                           labelText: 'Deskripsi',
                           prefixIcon: Icon(Icons.notes_rounded),
@@ -202,7 +198,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedCategory,
-                        dropdownColor: const Color(0xFF111827),
+                        dropdownColor: Theme.of(context).colorScheme.surface,
                         decoration: const InputDecoration(
                           labelText: 'Kategori',
                           prefixIcon: Icon(Icons.category_outlined),
@@ -235,8 +231,10 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                                 user?.role == UserRole.adminFaculty
                                     ? 'Belum ada kategori. Buat kategori master untuk kebutuhan audit.'
                                     : 'Belum ada kategori master. Hubungi admin DPM; kegiatan tetap dapat disimpan sebagai Tanpa Kategori.',
-                                style: const TextStyle(
-                                  color: Colors.white60,
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 12,
                                 ),
                               ),
@@ -257,7 +255,6 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: docsController,
-                        style: const TextStyle(color: Colors.white),
                         onChanged: (_) => setDialogState(() {}),
                         decoration: InputDecoration(
                           labelText: 'Dokumentasi URL',
@@ -267,7 +264,9 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                           helperStyle: TextStyle(
                             color: hasDocumentation
                                 ? Colors.greenAccent
-                                : Colors.white60,
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                           ),
                           prefixIcon: Icon(
                             hasDocumentation
@@ -602,11 +601,6 @@ class _ActivityCard extends ConsumerWidget {
                   backgroundColor: Theme.of(
                     context,
                   ).colorScheme.secondary.withValues(alpha: 0.12),
-                ),
-                Chip(
-                  avatar: const Icon(Icons.star_rate_rounded, size: 18),
-                  label: Text('${activity.pointsGenerated} poin Ormawa'),
-                  backgroundColor: Colors.amber.withValues(alpha: 0.16),
                 ),
               ],
             ),

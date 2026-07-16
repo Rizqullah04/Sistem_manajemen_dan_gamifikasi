@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\DokumentasiKegiatanResource;
 use App\Models\DokumentasiKegiatan;
 use App\Models\Kegiatan;
-use App\Services\PoinService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +24,7 @@ class DokumentasiKegiatanController extends Controller
         return $this->successResponse('Data dokumentasi berhasil diambil', DokumentasiKegiatanResource::collection($items));
     }
 
-    public function store(Request $request, PoinService $poinService): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'id_kegiatan' => ['required', 'exists:kegiatans,id_kegiatan'],
@@ -43,10 +42,6 @@ class DokumentasiKegiatanController extends Controller
         $data['tanggal_upload'] = now();
 
         $dokumentasi = DokumentasiKegiatan::create($data);
-
-        if ($kegiatan->status === Kegiatan::STATUS_VALID) {
-            $poinService->tambahPoinOrmawa($kegiatan->ormawa, 'kegiatan', $dokumentasi->id_dokumentasi, $kegiatan->poin_kegiatan, 'Upload dokumentasi kegiatan valid');
-        }
 
         return $this->successResponse('Dokumentasi berhasil dibuat', new DokumentasiKegiatanResource($dokumentasi), 201);
     }

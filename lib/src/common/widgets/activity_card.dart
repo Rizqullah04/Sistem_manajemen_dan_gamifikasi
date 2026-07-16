@@ -18,28 +18,29 @@ class ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       width: 212,
       margin: const EdgeInsets.only(right: 14),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1733),
+        color: colors.surfaceContainer,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
-          Text(organizer, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
+          Text(organizer, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
           const SizedBox(height: 6),
-          Text(date, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60)),
+          Text(date, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -54,7 +55,6 @@ class ActivityCard extends StatelessWidget {
                 ),
                 child: Text(status, style: TextStyle(color: status == 'Approved' ? Colors.greenAccent : Colors.orangeAccent)),
               ),
-              Text('+$points PTS', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.w700)),
             ],
           ),
         ],

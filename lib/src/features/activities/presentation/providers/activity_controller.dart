@@ -106,7 +106,7 @@ class ActivityController extends StateNotifier<ActivityState> {
       category: category,
       status: ActivityStatus.pending,
       ormawaId: user.ormawaId!,
-      pointsGenerated: 30,
+      pointsGenerated: 0,
       memberIds: const ['u3', 'u4'],
     );
     await _ref.read(activityRepositoryProvider).createActivity(activity);
@@ -139,8 +139,10 @@ class ActivityController extends StateNotifier<ActivityState> {
 
   Future<void> toggleLike(Activity activity) async {
     await _ref.read(activityRepositoryProvider).setActivityLiked(activity.id, !activity.isLiked);
-    await refreshPointDependentState(_ref);
     await loadInitial();
+    // Like hanya mengubah reaksi kegiatan. Meng-invalidasi seluruh provider
+    // dashboard dari controller ini dapat membongkar widget yang masih aktif.
+    await _ref.read(authControllerProvider.notifier).refreshProfile();
   }
 
   Future<void> verify({

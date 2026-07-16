@@ -13,7 +13,7 @@ class LeaderboardTabSwitch extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF15122B),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
@@ -37,7 +37,9 @@ class LeaderboardTabSwitch extends ConsumerWidget {
                     child: Text(
                       _getTabLabel(type),
                       style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
+                        color: isSelected
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),

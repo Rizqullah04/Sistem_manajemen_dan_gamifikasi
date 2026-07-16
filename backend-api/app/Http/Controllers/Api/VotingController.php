@@ -26,6 +26,10 @@ class VotingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if (! in_array($request->user()->role, ['admin', 'ormawa'], true)) {
+            return $this->errorResponse('Voting hanya dapat dibuat oleh DPM atau akun Ormawa.', status: 403);
+        }
+
         $data = $request->validate([
             'id_kegiatan' => ['nullable', 'exists:kegiatans,id_kegiatan'],
             'judul_voting' => ['required', 'string', 'max:150'],
@@ -57,6 +61,12 @@ class VotingController extends Controller
         }
 
         $data['id_ormawa'] = $kegiatan?->id_ormawa ?? $request->user()->id_ormawa;
+        $creatorOrmawa = $data['id_ormawa'] !== null
+            ? \App\Models\Ormawa::find($data['id_ormawa'])
+            : null;
+        $isFacultyVoting = $request->user()->role === 'admin'
+            || ($creatorOrmawa !== null && preg_match('/^(BEM|DPM)\b/i', $creatorOrmawa->nama_ormawa) === 1);
+        $data['voting_scope'] = $isFacultyVoting ? 'faculty' : 'organization';
         $data['poll_options'] = array_values(array_unique(array_map('trim', $data['poll_options'])));
         $data['status'] ??= 'aktif';
 
@@ -72,6 +82,10 @@ class VotingController extends Controller
 
     public function update(Request $request, Voting $voting): JsonResponse
     {
+        if (! $this->canManage($request, $voting)) {
+            return $this->errorResponse('Anda tidak memiliki akses mengelola voting ini.', status: 403);
+        }
+
         $data = $request->validate([
             'id_kegiatan' => ['sometimes', 'nullable', 'exists:kegiatans,id_kegiatan'],
             'judul_voting' => ['sometimes', 'string', 'max:150'],
@@ -94,6 +108,10 @@ class VotingController extends Controller
 
     public function clearCompletedLogs(PoinService $poinService): JsonResponse
     {
+        if (request()->user()->role !== 'admin') {
+            return $this->errorResponse('Hanya admin DPM yang dapat membersihkan seluruh log voting.', status: 403);
+        }
+
         $deletedCount = DB::transaction(function () use ($poinService): int {
             $votings = Voting::with(['voteDetails.user.ormawa'])
                 ->where(function ($query) {
@@ -118,6 +136,10 @@ class VotingController extends Controller
 
     public function destroy(Voting $voting, PoinService $poinService): JsonResponse
     {
+        if (! $this->canManage(request(), $voting)) {
+            return $this->errorResponse('Anda tidak memiliki akses menghapus voting ini.', status: 403);
+        }
+
         $voting->loadMissing(['voteDetails.user.ormawa']);
         $this->cancelVotePoints($voting, $poinService);
         $voting->delete();
@@ -134,5 +156,12 @@ class VotingController extends Controller
 
             $poinService->batalkanPoinUser($voteDetail->user, 'voting', $voteDetail->id_vote);
         }
+    }
+
+    private function canManage(Request $request, Voting $voting): bool
+    {
+        return $request->user()->role === 'admin'
+            || ($request->user()->role === 'ormawa'
+                && (int) $request->user()->id_ormawa === (int) $voting->id_ormawa);
     }
 }

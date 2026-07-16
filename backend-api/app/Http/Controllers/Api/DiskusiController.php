@@ -45,7 +45,7 @@ class DiskusiController extends Controller
         $rewardedCommentCount = $priorCommentIds->isEmpty()
             ? 0
             : PoinLog::query()
-                ->whereIn('sumber', ['komentar', 'balasan'])
+                ->where('sumber', 'komentar')
                 ->whereIn('referensi_id', $priorCommentIds)
                 ->count();
 
@@ -55,11 +55,8 @@ class DiskusiController extends Controller
         $diskusi = Diskusi::create($data)->load('user');
 
         $pointsAwarded = false;
-        if ($rewardedCommentCount < 3 && $diskusi->parent_id && $request->user()->role === 'ormawa' && $request->user()->ormawa) {
-            $poinService->tambahPoinOrmawa($request->user()->ormawa, 'balasan', $diskusi->id_diskusi, 2, 'Membalas komentar diskusi');
-            $pointsAwarded = true;
-        } elseif ($rewardedCommentCount < 3 && $request->user()->role === 'anggota') {
-            $poinService->tambahPoinUser($request->user(), 'komentar', $diskusi->id_diskusi, 15, 'Menulis komentar diskusi');
+        if ($rewardedCommentCount < 3 && $request->user()->role === 'anggota') {
+            $poinService->tambahPoinUser($request->user(), 'komentar', $diskusi->id_diskusi, 5, 'Menulis komentar berkualitas');
             $pointsAwarded = true;
         }
 
@@ -79,9 +76,7 @@ class DiskusiController extends Controller
             return $this->errorResponse('Anda tidak memiliki akses ke komentar ini.', status: 403);
         }
 
-        if ($diskusi->parent_id && $diskusi->user?->role === 'ormawa' && $diskusi->user->ormawa) {
-            $poinService->batalkanPoinOrmawa($diskusi->user->ormawa, 'balasan', $diskusi->id_diskusi);
-        } elseif ($diskusi->user?->role === 'anggota') {
+        if ($diskusi->user?->role === 'anggota') {
             $poinService->batalkanPoinUser($diskusi->user, 'komentar', $diskusi->id_diskusi);
         }
 

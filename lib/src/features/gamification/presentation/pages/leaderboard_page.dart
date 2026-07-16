@@ -19,22 +19,22 @@ class LeaderboardPage extends ConsumerWidget {
     final remaining = ref.watch(gamificationRemainingProvider);
 
     return Scaffold(
-      backgroundColor: LeaderboardColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: LeaderboardColors.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'LEADERBOARD',
-          style: LeaderboardTypography.headerMedium,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
+            icon: const Icon(Icons.info_outline),
             onPressed: () {
               showDialog(
                 context: context,

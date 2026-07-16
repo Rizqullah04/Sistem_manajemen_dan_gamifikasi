@@ -103,10 +103,7 @@ class _LiveVotingPreviewPageState extends State<LiveVotingPreviewPage> {
     final data = widget.data;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF080B1F),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080B1F),
-        foregroundColor: Colors.white,
         elevation: 0,
         title: const Text('Live Voting Preview'),
       ),
@@ -119,7 +116,7 @@ class _LiveVotingPreviewPageState extends State<LiveVotingPreviewPage> {
             Text(
               data.isKetua ? 'Daftar Kandidat' : 'Daftar Opsi Kegiatan',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w900,
                   ),
             ),

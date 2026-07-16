@@ -16,7 +16,8 @@ class ActivityTypeSeeder extends Seeder
                 'frequency_level' => 'high',
                 'difficulty_level' => 'easy',
                 'organizational_impact' => 'low',
-                'point_value' => 2,
+                'point_value' => 1,
+                'is_active' => true,
             ],
             [
                 'code' => 'COMMENT',
@@ -24,7 +25,17 @@ class ActivityTypeSeeder extends Seeder
                 'frequency_level' => 'high',
                 'difficulty_level' => 'easy',
                 'organizational_impact' => 'low',
-                'point_value' => 2,
+                'point_value' => 5,
+                'is_active' => true,
+            ],
+            [
+                'code' => 'LIKE',
+                'name' => 'Like Kegiatan',
+                'frequency_level' => 'high',
+                'difficulty_level' => 'easy',
+                'organizational_impact' => 'low',
+                'point_value' => 1,
+                'is_active' => true,
             ],
             [
                 'code' => 'JOIN_EVENT',
@@ -33,6 +44,7 @@ class ActivityTypeSeeder extends Seeder
                 'difficulty_level' => 'medium',
                 'organizational_impact' => 'medium',
                 'point_value' => 10,
+                'is_active' => false,
             ],
             [
                 'code' => 'COMMITTEE_MEMBER',
@@ -41,6 +53,16 @@ class ActivityTypeSeeder extends Seeder
                 'difficulty_level' => 'medium',
                 'organizational_impact' => 'high',
                 'point_value' => 15,
+                'is_active' => false,
+            ],
+            [
+                'code' => 'EVENT_COORDINATOR',
+                'name' => 'Event Coordinator',
+                'frequency_level' => 'low',
+                'difficulty_level' => 'hard',
+                'organizational_impact' => 'high',
+                'point_value' => 0,
+                'is_active' => false,
             ],
             [
                 'code' => 'EVENT_LEADER',
@@ -49,6 +71,7 @@ class ActivityTypeSeeder extends Seeder
                 'difficulty_level' => 'hard',
                 'organizational_impact' => 'high',
                 'point_value' => 25,
+                'is_active' => false,
             ],
         ];
 

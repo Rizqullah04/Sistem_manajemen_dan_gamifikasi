@@ -22,7 +22,6 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentat
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/providers/settings_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/edit_profile_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/presentation/widgets/discussion_section.dart';
-import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/leaderboard/presentation/pages/leaderboard_page.dart';
 
 class MemberDashboardPage extends ConsumerStatefulWidget {
@@ -51,7 +50,6 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0819),
       endDrawer: user == null ? null : _buildSidebar(context, user),
       body: SafeArea(
         child: user == null
@@ -110,7 +108,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     required Widget child,
   }) {
     return ColoredBox(
-      color: const Color(0xFF0B0819),
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         children: [
           Padding(
@@ -121,14 +119,14 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                   onPressed: () => setState(() => _selectedIndex = 0),
                   icon: const Icon(Icons.home_outlined),
                   tooltip: 'Kembali ke Home',
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -232,10 +230,14 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
               SizedBox(
                 height: 180,
                 child: activities.items.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'Belum ada kegiatan terbaru',
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
                         ),
                       )
                     : ListView.builder(
@@ -290,7 +292,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   ) async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF120E24),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -315,7 +317,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                         width: 42,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white24,
+                          color: Theme.of(context).colorScheme.outlineVariant,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -323,9 +325,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                     const SizedBox(height: 18),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.notifications_active_outlined,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -333,7 +335,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                             'Notifikasi Terbaru',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(
-                                  color: Colors.white,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontWeight: FontWeight.w800,
                                 ),
                           ),
@@ -347,12 +349,16 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                     ),
                     const SizedBox(height: 16),
                     if (notifications.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 24),
                         child: Center(
                           child: Text(
                             'Tidak ada notifikasi baru.',
-                            style: TextStyle(color: Colors.white60),
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                           ),
                         ),
                       )
@@ -364,8 +370,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: notifications.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(color: Colors.white10),
+                          separatorBuilder: (_, __) => const Divider(),
                           itemBuilder: (context, index) {
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
@@ -376,7 +381,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                               ),
                               title: Text(
                                 notifications[index],
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
                               ),
                             );
                           },
@@ -414,7 +421,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
 
   Widget _buildActivityCard(BuildContext context, Activity item) {
     return Material(
-      color: const Color(0xFF17122D),
+      color: Theme.of(context).colorScheme.surfaceContainer,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -424,6 +431,34 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 15,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(
+                      Icons.groups_2_outlined,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.organizerName.isEmpty
+                          ? 'Ormawa penyelenggara'
+                          : item.organizerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -444,36 +479,44 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                ).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.calendar_month,
                     size: 16,
-                    color: Colors.white54,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     DateFormat('dd MMM yyyy').format(item.date),
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${item.pointsGenerated} poin untuk Ormawa',
-                    style: const TextStyle(
-                      color: Colors.amberAccent,
-                      fontWeight: FontWeight.w700,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              Row(
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   TextButton.icon(
                     onPressed: () => _toggleActivityLike(item),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      foregroundColor: item.isLiked
+                          ? Colors.pinkAccent
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                     icon: Icon(
                       item.isLiked
                           ? Icons.favorite_rounded
@@ -483,6 +526,15 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                   ),
                   TextButton.icon(
                     onPressed: () => _handleActivityDislike(item),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      foregroundColor: item.isDisliked
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      backgroundColor: item.isDisliked
+                          ? Theme.of(context).colorScheme.errorContainer
+                          : null,
+                    ),
                     icon: Icon(
                       item.isDisliked
                           ? Icons.thumb_down_rounded
@@ -490,11 +542,41 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                     ),
                     label: Text('${item.dislikeCount} Masukan'),
                   ),
-                  const Spacer(),
-                  const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                  const SizedBox(width: 6),
-                  const Text('Detail & komentar'),
+                  TextButton.icon(
+                    onPressed: () => _showActivityDetail(context, item),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                    label: Text('${item.commentCount} Komentar'),
+                  ),
                 ],
+              ),
+              const Divider(height: 8),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _showActivityDetail(context, item),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Lihat detail kegiatan',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -526,7 +608,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
           .read(activityRepositoryProvider)
           .setActivityLiked(item.id, !item.isLiked);
       await ref.read(activityControllerProvider.notifier).loadInitial();
-      await refreshPointDependentWidgetState(ref);
+      if (!mounted) return;
+      await ref.read(authControllerProvider.notifier).refreshProfile();
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -553,7 +636,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
             );
       }
       await ref.read(activityControllerProvider.notifier).loadInitial();
-      await refreshPointDependentWidgetState(ref);
+      if (!mounted) return;
+      await ref.read(authControllerProvider.notifier).refreshProfile();
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -703,7 +787,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                       _buildInfoChip(
                         icon: Icons.star_rate_rounded,
                         label:
-                            '${item.pointsGenerated} poin untuk Ormawa setelah verifikasi',
+                            'Kegiatan telah diverifikasi oleh admin DPM',
                       ),
                     ],
                   ),
@@ -814,7 +898,10 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                                 await ref
                                     .read(activityControllerProvider.notifier)
                                     .loadInitial();
-                                await refreshPointDependentWidgetState(ref);
+                                if (!sheetContext.mounted) return;
+                                await ref
+                                    .read(authControllerProvider.notifier)
+                                    .refreshProfile();
                               } catch (error) {
                                 if (!sheetContext.mounted) return;
                                 ScaffoldMessenger.of(sheetContext).showSnackBar(

@@ -30,6 +30,8 @@ class Activity {
     this.isLiked = false,
     this.dislikeCount = 0,
     this.isDisliked = false,
+    this.organizerName = '',
+    this.commentCount = 0,
   });
 
   final String id;
@@ -47,6 +49,8 @@ class Activity {
   final bool isLiked;
   final int dislikeCount;
   final bool isDisliked;
+  final String organizerName;
+  final int commentCount;
 
   Activity copyWith({
     String? id,
@@ -64,6 +68,8 @@ class Activity {
     bool? isLiked,
     int? dislikeCount,
     bool? isDisliked,
+    String? organizerName,
+    int? commentCount,
   }) {
     return Activity(
       id: id ?? this.id,
@@ -81,6 +87,8 @@ class Activity {
       isLiked: isLiked ?? this.isLiked,
       dislikeCount: dislikeCount ?? this.dislikeCount,
       isDisliked: isDisliked ?? this.isDisliked,
+      organizerName: organizerName ?? this.organizerName,
+      commentCount: commentCount ?? this.commentCount,
     );
   }
 }

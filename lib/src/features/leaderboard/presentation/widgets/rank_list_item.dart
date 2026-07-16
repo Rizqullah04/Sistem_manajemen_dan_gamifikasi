@@ -30,7 +30,9 @@ class RankListItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFF6C4AB6).withValues(alpha: 0.18) : const Color(0xFF1A1733),
+          color: isCurrent
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(18),
           border: isCurrent ? Border.all(color: const Color(0xFF6C4AB6), width: 1.2) : null,
           boxShadow: [
@@ -50,7 +52,7 @@ class RankListItem extends StatelessWidget {
               child: Text(
                 '#${user.rank}',
                 style: TextStyle(
-                  color: isCurrent ? Colors.white : Colors.white70,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
                 ),
@@ -79,7 +81,7 @@ class RankListItem extends StatelessWidget {
                         child: Text(
                           user.name,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -115,8 +117,8 @@ class RankListItem extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     user.ormawa,
-                    style: const TextStyle(
-                      color: Colors.white54,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 12,
                     ),
                   ),

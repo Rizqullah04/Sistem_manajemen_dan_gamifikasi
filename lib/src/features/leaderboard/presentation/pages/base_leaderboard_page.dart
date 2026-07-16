@@ -19,7 +19,6 @@ abstract class BaseLeaderboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: LeaderboardColors.backgroundColor,
       appBar: _buildAppBar(context),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,20 +51,21 @@ abstract class BaseLeaderboardPage extends ConsumerWidget {
   /// Override methods
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: LeaderboardColors.backgroundColor,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      title: const Text(
+      title: Text(
         'LEADERBOARD',
-        style: LeaderboardTypography.headerMedium,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
       ),
       centerTitle: true,
       actions: [
         IconButton(
-          icon: const Icon(Icons.info_outline, color: Colors.white),
+          icon: const Icon(Icons.info_outline),
           onPressed: () => _showInfoDialog(context),
         ),
       ],
@@ -76,17 +76,18 @@ abstract class BaseLeaderboardPage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: LeaderboardColors.surfaceColor,
-        title: const Text(
+        title: Text(
           'Leaderboard Info',
           style: TextStyle(
-            color: LeaderboardColors.textWhite,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: const Text(
+        content: Text(
           'Switch between Individu and Ormawa leaderboard to compare points and ranking.',
-          style: TextStyle(color: LeaderboardColors.textWhite70),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(

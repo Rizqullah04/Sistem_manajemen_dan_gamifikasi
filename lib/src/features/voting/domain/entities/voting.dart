@@ -31,6 +31,9 @@ class Voting {
     required this.options,
     required this.voterIds,
     this.status = 'AKTIF',
+    this.scope = 'faculty',
+    this.canVote = true,
+    this.eligibilityMessage = '',
   });
 
   final String id;
@@ -42,6 +45,9 @@ class Voting {
   final List<VoteOption> options;
   final Set<String> voterIds;
   final String status;
+  final String scope;
+  final bool canVote;
+  final String eligibilityMessage;
 
   bool get isActive {
     final now = DateTime.now();
@@ -58,6 +64,9 @@ class Voting {
     List<VoteOption>? options,
     Set<String>? voterIds,
     String? status,
+    String? scope,
+    bool? canVote,
+    String? eligibilityMessage,
   }) {
     return Voting(
       id: id ?? this.id,
@@ -69,6 +78,9 @@ class Voting {
       options: options ?? this.options,
       voterIds: voterIds ?? this.voterIds,
       status: status ?? this.status,
+      scope: scope ?? this.scope,
+      canVote: canVote ?? this.canVote,
+      eligibilityMessage: eligibilityMessage ?? this.eligibilityMessage,
     );
   }
 }

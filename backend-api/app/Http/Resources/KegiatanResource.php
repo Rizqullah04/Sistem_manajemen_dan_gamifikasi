@@ -27,6 +27,7 @@ class KegiatanResource extends JsonResource
             'disukai_user' => (bool) ($this->disukai_user ?? false),
             'jumlah_dislike' => $this->whenCounted('dislikeKegiatans'),
             'tidak_disukai_user' => (bool) ($this->tidak_disukai_user ?? false),
+            'jumlah_komentar' => $this->whenCounted('diskusis'),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

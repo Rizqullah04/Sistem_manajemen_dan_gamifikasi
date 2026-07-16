@@ -1,0 +1,254 @@
+@startuml Ormawa_App_05_Keseluruhan_Relasi
+
+' ERD domain Ormawa App - 05 Keseluruhan Relasi
+' Batas kanvas A4 landscape pada 150 DPI: 1754 x 1240 piksel.
+scale max 1754*1240
+left to right direction
+skinparam dpi 150
+skinparam linetype ortho
+skinparam nodesep 12
+skinparam ranksep 22
+skinparam shadowing false
+skinparam roundcorner 3
+skinparam defaultFontName Arial
+skinparam defaultFontSize 8
+skinparam entity {
+  BackgroundColor White
+  BorderColor #374151
+  HeaderBackgroundColor #E5E7EB
+  FontColor #111827
+  FontSize 8
+}
+skinparam ArrowColor #6B7280
+hide methods
+hide stereotypes
+
+' Hanya PK/FK dan tipe data agar tabel ringkas.
+entity users {
+  * id_user : BIGINT UNSIGNED <<PK>>
+  --
+  id_ormawa : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity ormawas {
+  * id_ormawa : BIGINT UNSIGNED <<PK>>
+}
+
+entity user_ormawa_memberships {
+  * id : BIGINT UNSIGNED <<PK>>
+  --
+  id_user : BIGINT UNSIGNED <<FK>>
+  id_ormawa : BIGINT UNSIGNED <<FK>>
+  appointed_by : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity chats {
+  * id_chat : BIGINT UNSIGNED <<PK>>
+  --
+  id_pengirim : BIGINT UNSIGNED <<FK>>
+  id_penerima : BIGINT UNSIGNED <<FK>>
+}
+
+entity kategori_kegiatans {
+  * id : BIGINT UNSIGNED <<PK>>
+}
+
+entity kegiatans {
+  * id_kegiatan : BIGINT UNSIGNED <<PK>>
+  --
+  id_ormawa : BIGINT UNSIGNED <<FK>>
+  kategori_id : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity dokumentasi_kegiatans {
+  * id_dokumentasi : BIGINT UNSIGNED <<PK>>
+  --
+  id_kegiatan : BIGINT UNSIGNED <<FK>>
+  id_ormawa : BIGINT UNSIGNED <<FK>>
+}
+
+entity verifikasis {
+  * id_verifikasi : BIGINT UNSIGNED <<PK>>
+  --
+  id_kegiatan : BIGINT UNSIGNED <<FK>>
+  id_admin : BIGINT UNSIGNED <<FK>>
+}
+
+entity penilaians {
+  * id : BIGINT UNSIGNED <<PK>>
+  --
+  kegiatan_id : BIGINT UNSIGNED <<FK>>
+  juri_id : BIGINT UNSIGNED <<FK>>
+}
+
+entity diskusis {
+  * id_diskusi : BIGINT UNSIGNED <<PK>>
+  --
+  id_kegiatan : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK>>
+  parent_id : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity like_kegiatans {
+  * id_like : BIGINT UNSIGNED <<PK>>
+  --
+  id_kegiatan : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK>>
+}
+
+entity dislike_kegiatans {
+  * id_dislike : BIGINT UNSIGNED <<PK>>
+  --
+  id_kegiatan : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK>>
+}
+
+entity votings {
+  * id_voting : BIGINT UNSIGNED <<PK>>
+  --
+  id_kegiatan : BIGINT UNSIGNED <<FK, NULL>>
+  id_ormawa : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity vote_details {
+  * id_vote : BIGINT UNSIGNED <<PK>>
+  --
+  id_voting : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK>>
+}
+
+entity periods {
+  * id_period : BIGINT UNSIGNED <<PK>>
+}
+
+entity activity_types {
+  * id_activity_type : BIGINT UNSIGNED <<PK>>
+}
+
+entity poin_logs {
+  * id_poin_log : BIGINT UNSIGNED <<PK>>
+  --
+  id_period : BIGINT UNSIGNED <<FK, NULL>>
+  id_user : BIGINT UNSIGNED <<FK, NULL>>
+  id_ormawa : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity point_histories {
+  * id_point_history : BIGINT UNSIGNED <<PK>>
+  --
+  id_period : BIGINT UNSIGNED <<FK>>
+  id_activity_type : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK, NULL>>
+  id_ormawa : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity user_points {
+  * id_user_point : BIGINT UNSIGNED <<PK>>
+  --
+  id_period : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK>>
+}
+
+entity organization_points {
+  * id_organization_point : BIGINT UNSIGNED <<PK>>
+  --
+  id_period : BIGINT UNSIGNED <<FK>>
+  id_ormawa : BIGINT UNSIGNED <<FK>>
+}
+
+entity badges {
+  * id : BIGINT UNSIGNED <<PK>>
+}
+
+entity user_badges {
+  * id_user_badge : BIGINT UNSIGNED <<PK>>
+  --
+  id_user : BIGINT UNSIGNED <<FK>>
+  id_badge : BIGINT UNSIGNED <<FK>>
+  id_period : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity ormawa_badges {
+  * id : BIGINT UNSIGNED <<PK>>
+  --
+  ormawa_id : BIGINT UNSIGNED <<FK>>
+  badge_id : BIGINT UNSIGNED <<FK>>
+}
+
+entity leaderboards {
+  * id_leaderboard : BIGINT UNSIGNED <<PK>>
+  --
+  id_period : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity leaderboard_details {
+  * id_detail : BIGINT UNSIGNED <<PK>>
+  --
+  id_leaderboard : BIGINT UNSIGNED <<FK>>
+  id_user : BIGINT UNSIGNED <<FK, NULL>>
+  id_ormawa : BIGINT UNSIGNED <<FK, NULL>>
+}
+
+entity ormawa_award_results {
+  * id_ormawa_award_result : BIGINT UNSIGNED <<PK>>
+  --
+  id_period : BIGINT UNSIGNED <<FK, NULL>>
+  id_ormawa : BIGINT UNSIGNED <<FK>>
+}
+
+' Relasi pengguna dan organisasi
+ormawas ||--o{ users
+users ||--o{ user_ormawa_memberships : anggota
+ormawas ||--o{ user_ormawa_memberships
+users |o--o{ user_ormawa_memberships : menunjuk
+users ||--o{ chats : pengirim
+users ||--o{ chats : penerima
+
+' Relasi kegiatan
+ormawas ||--o{ kegiatans
+kategori_kegiatans |o--o{ kegiatans
+kegiatans ||--o{ dokumentasi_kegiatans
+ormawas ||--o{ dokumentasi_kegiatans
+kegiatans ||--o{ verifikasis
+users ||--o{ verifikasis
+kegiatans ||--o{ penilaians
+users ||--o{ penilaians
+kegiatans ||--o{ diskusis
+users ||--o{ diskusis
+diskusis |o--o{ diskusis : balasan
+kegiatans ||--o{ like_kegiatans
+users ||--o{ like_kegiatans
+kegiatans ||--o{ dislike_kegiatans
+users ||--o{ dislike_kegiatans
+
+' Relasi voting
+kegiatans |o--o{ votings
+ormawas |o--o{ votings
+votings ||--o{ vote_details
+users ||--o{ vote_details
+
+' Relasi gamifikasi dan penghargaan
+periods |o--o{ poin_logs
+users |o--o{ poin_logs
+ormawas |o--o{ poin_logs
+periods ||--o{ point_histories
+activity_types ||--o{ point_histories
+users |o--o{ point_histories
+ormawas |o--o{ point_histories
+periods ||--o{ user_points
+users ||--o{ user_points
+periods ||--o{ organization_points
+ormawas ||--o{ organization_points
+users ||--o{ user_badges
+badges ||--o{ user_badges
+periods |o--o{ user_badges
+ormawas ||--o{ ormawa_badges
+badges ||--o{ ormawa_badges
+periods |o--o{ leaderboards
+leaderboards ||--o{ leaderboard_details
+users |o--o{ leaderboard_details
+ormawas |o--o{ leaderboard_details
+periods |o--o{ ormawa_award_results
+ormawas ||--o{ ormawa_award_results
+
+@enduml

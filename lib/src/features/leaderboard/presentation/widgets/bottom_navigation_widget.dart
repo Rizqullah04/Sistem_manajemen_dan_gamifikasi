@@ -20,9 +20,9 @@ class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      backgroundColor: const Color(0xFF1A1733),
-      selectedItemColor: const Color(0xFF6C4AB6),
-      unselectedItemColor: Colors.white54,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      selectedItemColor: Theme.of(context).colorScheme.primary,
+      unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
       currentIndex: _selectedIndex,
       onTap: _onItemTapped,
       items: const [

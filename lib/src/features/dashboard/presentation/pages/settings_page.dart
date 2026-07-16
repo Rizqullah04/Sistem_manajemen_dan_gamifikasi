@@ -61,6 +61,20 @@ class SettingsPage extends ConsumerWidget {
                 title: 'Tampilan',
                 children: [
                   SwitchListTile(
+                    value: !settings.darkModeEnabled,
+                    onChanged: (lightMode) =>
+                        controller.setDarkModeEnabled(!lightMode),
+                    secondary: Icon(
+                      settings.darkModeEnabled
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
+                    ),
+                    title: const Text('Mode terang'),
+                    subtitle: const Text(
+                      'Gunakan tampilan terang yang nyaman di ruangan bercahaya.',
+                    ),
+                  ),
+                  SwitchListTile(
                     value: settings.compactDashboardEnabled,
                     onChanged: controller.setCompactDashboardEnabled,
                     secondary: const Icon(Icons.view_agenda_outlined),

@@ -29,7 +29,7 @@ class LeaderboardPage extends ConsumerWidget {
     final selectedType = ref.watch(leaderboardTypeProvider);
     final currentUser = ref.watch(currentUserProvider);
     final content = ColoredBox(
-      color: LeaderboardColors.backgroundColor,
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -63,35 +63,38 @@ class LeaderboardPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: LeaderboardColors.backgroundColor,
       appBar: AppBar(
-        backgroundColor: LeaderboardColors.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'LEADERBOARD',
-          style: LeaderboardTypography.headerMedium,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
         ),
         centerTitle: true,
         actions: [
           const DashboardHomeAction(),
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
+            icon: const Icon(Icons.info_outline),
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  backgroundColor: LeaderboardColors.surfaceColor,
-                  title: const Text(
+                  title: Text(
                     'Leaderboard Info',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
-                  content: const Text(
+                  content: Text(
                     'Switch between Individu and Ormawa leaderboard to compare points and ranking.',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   actions: [
                     TextButton(
@@ -122,8 +125,8 @@ class LeaderboardPage extends ConsumerWidget {
               children: [
                 Text(
                   selectedType == LeaderboardType.individu ? 'Top Individu' : 'Top Ormawa',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -138,7 +141,10 @@ class LeaderboardPage extends ConsumerWidget {
                     ),
                     child: Text(
                       selectedType == LeaderboardType.individu ? 'Personal Ranking' : 'Ormawa Ranking',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

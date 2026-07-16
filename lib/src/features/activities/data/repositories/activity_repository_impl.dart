@@ -221,6 +221,11 @@ class ActivityRepositoryImpl implements ActivityRepository {
           int.tryParse(json['jumlah_dislike']?.toString() ?? '0') ?? 0,
       isDisliked: json['tidak_disukai_user'] == true ||
           json['tidak_disukai_user'] == 1,
+      organizerName: json['ormawa'] is Map
+          ? ((json['ormawa'] as Map)['nama_ormawa']?.toString() ?? '')
+          : '',
+      commentCount:
+          int.tryParse(json['jumlah_komentar']?.toString() ?? '0') ?? 0,
     );
   }
 

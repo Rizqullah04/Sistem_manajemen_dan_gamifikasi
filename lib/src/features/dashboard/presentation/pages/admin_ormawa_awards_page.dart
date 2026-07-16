@@ -97,6 +97,7 @@ class _AdminOrmawaAwardsContentState
                 isBusy: _isLoading || _isSaving,
                 onPreview: _loadPreview,
                 onGenerate: _generateAwards,
+                onHistory: () => context.push('/admin/ormawa-awards/history'),
               ),
               SizedBox(height: spacing),
               if (isWide)
@@ -156,7 +157,7 @@ class _AdminOrmawaAwardsContentState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Rentang Penilaian dan Kriteria',
+                '1. Atur Rentang dan Isi Rubrik',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -214,7 +215,7 @@ class _AdminOrmawaAwardsContentState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Rekap Penilaian',
+              '2. Preview Hasil Perhitungan',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -396,11 +397,13 @@ class _HeaderCard extends StatelessWidget {
     required this.isBusy,
     required this.onPreview,
     required this.onGenerate,
+    required this.onHistory,
   });
 
   final bool isBusy;
   final VoidCallback onPreview;
   final VoidCallback onGenerate;
+  final VoidCallback onHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -421,14 +424,14 @@ class _HeaderCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Penilaian Ormawa Awards',
+                    'Penilaian dan Hasil Ormawa Awards',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'DPM FT mengisi skor rubrik 1-5 berdasarkan penilaian dan bukti kegiatan. Sistem menghitung Keaktifan otomatis dari data aktivitas, lalu menyimpan peringkat.',
+                    'Tahap 1: isi rubrik. Tahap 2: preview hasil. Tahap 3: hitung dan simpan peringkat. Riwayat tersimpan sebagai bukti transparansi penilaian.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -454,7 +457,12 @@ class _HeaderCard extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save_outlined),
-                  label: const Text('Hitung & Simpan'),
+                  label: const Text('3. Hitung & Simpan Hasil'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: isBusy ? null : onHistory,
+                  icon: const Icon(Icons.history_rounded),
+                  label: const Text('Riwayat Hasil'),
                 ),
               ],
             ),
@@ -532,6 +540,61 @@ class _RubricInfo extends StatelessWidget {
               color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => _showRubricIndicators(context),
+            icon: const Icon(Icons.menu_book_outlined),
+            label: const Text('Lihat Indikator Rubrik 1–5'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRubricIndicators(BuildContext context) {
+    const criteria = <String, String>{
+      'kedisiplinan': 'Kedisiplinan',
+      'kekompakan': 'Kekompakan',
+      'komunikasi': 'Komunikasi',
+      'kesuksesan_proker': 'Kesuksesan Program Kerja',
+    };
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Indikator Rubrik DPM FT'),
+        content: SizedBox(
+          width: 620,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final criterion in criteria.entries) ...[
+                Text(
+                  criterion.value,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                for (var score = 1; score <= 5; score++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '$score — ${_rubricIndicator(criterion.key, score)}',
+                    ),
+                  ),
+                const Divider(height: 22),
+              ],
+              const Text(
+                'Keaktifan tidak dipilih manual. Sistem menghitungnya dari data aktivitas pada rentang periode.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
           ),
         ],
       ),
@@ -616,6 +679,7 @@ class _AwardsTable extends StatelessWidget {
             DataColumn(label: Text('ProKer')),
             DataColumn(label: Text('Rata-rata')),
             DataColumn(label: Text('Predikat')),
+            DataColumn(label: Text('Catatan DPM')),
             DataColumn(label: Text('Data Sistem')),
           ],
           rows: preview.entries.map((entry) {
@@ -626,6 +690,7 @@ class _AwardsTable extends StatelessWidget {
                 DataCell(Text(entry.name)),
                 DataCell(
                   _ScoreSelect(
+                    criterion: 'kedisiplinan',
                     value: score.kedisiplinan,
                     onChanged: (value) => onScoreChanged(
                       entry.ormawaId,
@@ -635,6 +700,7 @@ class _AwardsTable extends StatelessWidget {
                 ),
                 DataCell(
                   _ScoreSelect(
+                    criterion: 'kekompakan',
                     value: score.kekompakan,
                     onChanged: (value) => onScoreChanged(
                       entry.ormawaId,
@@ -644,6 +710,7 @@ class _AwardsTable extends StatelessWidget {
                 ),
                 DataCell(
                   _ScoreSelect(
+                    criterion: 'komunikasi',
                     value: score.komunikasi,
                     onChanged: (value) => onScoreChanged(
                       entry.ormawaId,
@@ -662,6 +729,7 @@ class _AwardsTable extends StatelessWidget {
                 ),
                 DataCell(
                   _ScoreSelect(
+                    criterion: 'kesuksesan_proker',
                     value: score.kesuksesanProker,
                     onChanged: (value) => onScoreChanged(
                       entry.ormawaId,
@@ -671,6 +739,24 @@ class _AwardsTable extends StatelessWidget {
                 ),
                 DataCell(Text(entry.totalScore.toStringAsFixed(2))),
                 DataCell(Text(entry.predicate)),
+                DataCell(
+                  SizedBox(
+                    width: 220,
+                    child: TextFormField(
+                      initialValue: score.notes,
+                      minLines: 1,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'Bukti, observasi, atau alasan nilai',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => onScoreChanged(
+                        entry.ormawaId,
+                        score.copyWith(notes: value),
+                      ),
+                    ),
+                  ),
+                ),
                 DataCell(
                   Text(
                     'Kegiatan ${entry.metrics.activities} | Poin ${entry.metrics.points} | Voting ${entry.metrics.votingVotes} | Diskusi ${entry.metrics.discussions} | Hadir ${entry.metrics.attendance}',
@@ -687,17 +773,19 @@ class _AwardsTable extends StatelessWidget {
 
 class _ScoreSelect extends StatelessWidget {
   const _ScoreSelect({
+    required this.criterion,
     required this.value,
     required this.onChanged,
   });
 
+  final String criterion;
   final int? value;
   final ValueChanged<int?> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 88,
+      width: 180,
       child: DropdownButtonFormField<int>(
         initialValue: value,
         isDense: true,
@@ -709,7 +797,7 @@ class _ScoreSelect extends StatelessWidget {
             .map(
               (score) => DropdownMenuItem<int>(
                 value: score,
-                child: Text('$score'),
+                child: Text('$score — ${_rubricIndicator(criterion, score)}'),
               ),
             )
             .toList(),
@@ -753,6 +841,7 @@ class OrmawaAwardEntry {
     required this.predicate,
     required this.metrics,
     required this.rubricScores,
+    required this.rubricNotes,
   });
 
   final int ormawaId;
@@ -762,6 +851,7 @@ class OrmawaAwardEntry {
   final String predicate;
   final OrmawaAwardMetrics metrics;
   final Map<String, int?> rubricScores;
+  final String rubricNotes;
 
   factory OrmawaAwardEntry.fromJson(Map<String, dynamic> json) {
     return OrmawaAwardEntry(
@@ -776,6 +866,7 @@ class OrmawaAwardEntry {
             : const <String, dynamic>{},
       ),
       rubricScores: _parseRubricScores(json['rubric_scores']),
+      rubricNotes: json['rubric_notes']?.toString() ?? '',
     );
   }
 
@@ -829,12 +920,14 @@ class _DpmRubricScore {
     this.kekompakan,
     this.komunikasi,
     this.kesuksesanProker,
+    this.notes = '',
   });
 
   final int? kedisiplinan;
   final int? kekompakan;
   final int? komunikasi;
   final int? kesuksesanProker;
+  final String notes;
 
   bool get isComplete =>
       kedisiplinan != null &&
@@ -848,6 +941,7 @@ class _DpmRubricScore {
       kekompakan: entry.rubricScores['kekompakan'],
       komunikasi: entry.rubricScores['komunikasi'],
       kesuksesanProker: entry.rubricScores['kesuksesan_proker'],
+      notes: entry.rubricNotes,
     );
   }
 
@@ -856,12 +950,14 @@ class _DpmRubricScore {
     int? kekompakan,
     int? komunikasi,
     int? kesuksesanProker,
+    String? notes,
   }) {
     return _DpmRubricScore(
       kedisiplinan: kedisiplinan ?? this.kedisiplinan,
       kekompakan: kekompakan ?? this.kekompakan,
       komunikasi: komunikasi ?? this.komunikasi,
       kesuksesanProker: kesuksesanProker ?? this.kesuksesanProker,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -871,6 +967,44 @@ class _DpmRubricScore {
       if (kekompakan != null) 'kekompakan': kekompakan,
       if (komunikasi != null) 'komunikasi': komunikasi,
       if (kesuksesanProker != null) 'kesuksesan_proker': kesuksesanProker,
+      if (notes.trim().isNotEmpty) 'notes': notes.trim(),
     };
   }
+}
+
+String _rubricIndicator(String criterion, int score) {
+  const indicators = <String, List<String>>{
+    'kedisiplinan': [
+      'Sering terlambat/tidak lengkap',
+      'Banyak kewajiban terlambat',
+      'Mayoritas sesuai jadwal',
+      'Tepat waktu, kendala kecil',
+      'Konsisten dan terdokumentasi',
+    ],
+    'kekompakan': [
+      'Koordinasi tidak berjalan',
+      'Kolaborasi masih lemah',
+      'Kerja sama cukup berjalan',
+      'Tim kompak dan responsif',
+      'Kolaborasi sangat solid',
+    ],
+    'komunikasi': [
+      'Informasi tidak tersampaikan',
+      'Komunikasi sering terlambat',
+      'Komunikasi cukup efektif',
+      'Komunikasi jelas dan terbuka',
+      'Sangat efektif dan terdokumentasi',
+    ],
+    'kesuksesan_proker': [
+      'Target tidak tercapai',
+      'Sebagian kecil target tercapai',
+      'Target utama cukup tercapai',
+      'Hampir seluruh target tercapai',
+      'Seluruh target dan dampak tercapai',
+    ],
+  };
+  final values = indicators[criterion];
+  return values == null || score < 1 || score > 5
+      ? '-'
+      : values[score - 1];
 }
