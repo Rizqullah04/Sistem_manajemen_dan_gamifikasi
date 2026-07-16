@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/providers/activity_controller.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
@@ -18,20 +20,44 @@ class ActivityListPage extends ConsumerStatefulWidget {
 }
 
 class _ActivityListPageState extends ConsumerState<ActivityListPage> {
-  final List<String> listKategori = [
-    'Kegiatan',
-    'Seminar',
-    'Pelatihan',
-    'Kompetisi',
-    'Pengabdian',
-  ];
+  final List<String> listKategori = [];
 
   @override
   void initState() {
     super.initState();
     Future.microtask(
-      () => ref.read(activityControllerProvider.notifier).loadInitial(),
+      () async {
+        await Future.wait([
+          ref.read(activityControllerProvider.notifier).loadInitial(),
+          _loadCategories(),
+        ]);
+      },
     );
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final response = await ref
+          .read(dioProvider)
+          .get<Map<String, dynamic>>('/kategori-kegiatans');
+      final data = response.data?['data'];
+      if (!mounted || data is! List) return;
+      setState(() {
+        listKategori
+          ..clear()
+          ..addAll(
+            data
+                .whereType<Map<String, dynamic>>()
+                .map((item) => item['nama_kategori']?.toString() ?? '')
+                .where((name) => name.isNotEmpty),
+          );
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kategori kegiatan gagal dimuat.')),
+      );
+    }
   }
 
   @override
@@ -39,9 +65,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
     final state = ref.watch(activityControllerProvider);
     final user = ref.watch(authControllerProvider).user;
 
-    final canManageCategories =
-        user?.role == UserRole.adminFaculty ||
-        user?.role == UserRole.ormawaAccount;
+    final canManageCategories = user?.role == UserRole.adminFaculty;
 
     return Scaffold(
       appBar: AppBar(
@@ -117,12 +141,16 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
     BuildContext context, {
     Activity? activity,
   }) async {
+    final user = ref.read(authControllerProvider).user;
     final isEditing = activity != null;
     final titleController = TextEditingController(text: activity?.title);
     final descController = TextEditingController(text: activity?.description);
-    var selectedCategory = listKategori.contains(activity?.category)
+    final availableCategories = listKategori.isEmpty
+        ? const <String>['Tanpa Kategori']
+        : List<String>.from(listKategori);
+    var selectedCategory = availableCategories.contains(activity?.category)
         ? activity!.category
-        : listKategori.first;
+        : availableCategories.first;
     final docsController = TextEditingController(text: activity?.documentation);
     DateTime selectedDate = activity?.date ?? DateTime.now();
     final formKey = GlobalKey<FormState>();
@@ -180,7 +208,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                           prefixIcon: Icon(Icons.category_outlined),
                         ),
                         icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                        items: listKategori
+                        items: availableCategories
                             .map(
                               (category) => DropdownMenuItem(
                                 value: category,
@@ -191,13 +219,41 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                         onChanged: isSubmitting
                             ? null
                             : (value) {
-                                if (value == null) return;
-                                setDialogState(() => selectedCategory = value);
-                              },
+                              if (value == null) return;
+                              setDialogState(() => selectedCategory = value);
+                            },
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Wajib diisi'
                             : null,
                       ),
+                      if (listKategori.isEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                user?.role == UserRole.adminFaculty
+                                    ? 'Belum ada kategori. Buat kategori master untuk kebutuhan audit.'
+                                    : 'Belum ada kategori master. Hubungi admin DPM; kegiatan tetap dapat disimpan sebagai Tanpa Kategori.',
+                                style: const TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            if (user?.role == UserRole.adminFaculty)
+                              TextButton(
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        _openManageCategoryPage();
+                                      },
+                                child: const Text('Buat Kategori'),
+                              ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: docsController,
@@ -345,12 +401,12 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
       MaterialPageRoute<void>(
         builder: (_) => ManageCategoryPage(
           initialCategories: listKategori,
+          dio: ref.read(dioProvider),
           onCategoriesChanged: (categories) {
             setState(() {
               listKategori
                 ..clear()
                 ..addAll(categories);
-              if (listKategori.isEmpty) listKategori.add('Kegiatan');
             });
           },
         ),
@@ -549,7 +605,7 @@ class _ActivityCard extends ConsumerWidget {
                 ),
                 Chip(
                   avatar: const Icon(Icons.star_rate_rounded, size: 18),
-                  label: Text('${activity.pointsGenerated} Poin'),
+                  label: Text('${activity.pointsGenerated} poin Ormawa'),
                   backgroundColor: Colors.amber.withValues(alpha: 0.16),
                 ),
               ],
@@ -566,8 +622,62 @@ class _ActivityCard extends ConsumerWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => ref
+                      .read(activityControllerProvider.notifier)
+                      .toggleLike(activity),
+                  icon: Icon(activity.isLiked ? Icons.favorite : Icons.favorite_border),
+                  label: Text('${activity.likeCount} Suka'),
+                ),
+                if (userRole == UserRole.memberAccount)
+                  OutlinedButton.icon(
+                    onPressed: () => _toggleDislike(context, ref),
+                    icon: Icon(
+                      activity.isDisliked
+                          ? Icons.thumb_down_rounded
+                          : Icons.thumb_down_outlined,
+                    ),
+                    label: Text('${activity.dislikeCount} Masukan'),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () => _showFeedback(context, ref),
+                    icon: const Icon(Icons.rate_review_outlined),
+                    label: Text('Lihat ${activity.dislikeCount} Masukan'),
+                  ),
                 TextButton.icon(
-                  onPressed: () {},
+                  onPressed: activity.documentation.trim().isEmpty
+                      ? null
+                      : () => showDialog<void>(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('Dokumentasi Kegiatan'),
+                              content: SelectableText(activity.documentation),
+                              actions: [
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: activity.documentation),
+                                    );
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Tautan dokumentasi disalin.'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.copy_outlined),
+                                  label: const Text('Salin Tautan'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Tutup'),
+                                ),
+                              ],
+                            ),
+                          ),
                   icon: const Icon(Icons.link_outlined),
                   label: const Text('Lihat Dokumentasi'),
                 ),
@@ -637,6 +747,130 @@ class _ActivityCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleDislike(BuildContext context, WidgetRef ref) async {
+    String? reason;
+    String? solution;
+    if (!activity.isDisliked) {
+      final reasonController = TextEditingController();
+      final solutionController = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+      final result = await showDialog<(String, String)>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Masukan Perbaikan'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(labelText: 'Alasan'),
+                  minLines: 2,
+                  maxLines: 3,
+                  validator: (value) => (value?.trim().length ?? 0) < 10
+                      ? 'Alasan minimal 10 karakter'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: solutionController,
+                  decoration: const InputDecoration(labelText: 'Saran solusi'),
+                  minLines: 2,
+                  maxLines: 3,
+                  validator: (value) => (value?.trim().length ?? 0) < 10
+                      ? 'Solusi minimal 10 karakter'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(
+                  dialogContext,
+                  (reasonController.text.trim(), solutionController.text.trim()),
+                );
+              },
+              child: const Text('Kirim'),
+            ),
+          ],
+        ),
+      );
+      reasonController.dispose();
+      solutionController.dispose();
+      if (result == null) return;
+      reason = result.$1;
+      solution = result.$2;
+    }
+
+    await ref.read(activityRepositoryProvider).setActivityDisliked(
+          activityId: activity.id,
+          disliked: !activity.isDisliked,
+          reason: reason,
+          solution: solution,
+        );
+    await ref.read(activityControllerProvider.notifier).loadInitial();
+  }
+
+  Future<void> _showFeedback(BuildContext context, WidgetRef ref) async {
+    try {
+      final feedback = await ref
+          .read(activityRepositoryProvider)
+          .fetchActivityFeedback(activity.id);
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Masukan Perbaikan'),
+          content: SizedBox(
+            width: 520,
+            child: feedback.isEmpty
+                ? const Text('Belum ada masukan untuk kegiatan ini.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: feedback.length,
+                    separatorBuilder: (_, __) => const Divider(height: 28),
+                    itemBuilder: (context, index) {
+                      final item = feedback[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.userName,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Alasan: ${item.reason}'),
+                          const SizedBox(height: 6),
+                          Text('Saran solusi: ${item.solution}'),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Tutup'),
+            ),
+          ],
+        ),
+      );
+    } on AppException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {

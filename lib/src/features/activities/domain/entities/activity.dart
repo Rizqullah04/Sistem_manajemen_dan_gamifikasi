@@ -26,6 +26,10 @@ class Activity {
     required this.pointsGenerated,
     required this.memberIds,
     this.verificationNote,
+    this.likeCount = 0,
+    this.isLiked = false,
+    this.dislikeCount = 0,
+    this.isDisliked = false,
   });
 
   final String id;
@@ -39,6 +43,10 @@ class Activity {
   final int pointsGenerated;
   final List<String> memberIds;
   final String? verificationNote;
+  final int likeCount;
+  final bool isLiked;
+  final int dislikeCount;
+  final bool isDisliked;
 
   Activity copyWith({
     String? id,
@@ -52,6 +60,10 @@ class Activity {
     int? pointsGenerated,
     List<String>? memberIds,
     String? verificationNote,
+    int? likeCount,
+    bool? isLiked,
+    int? dislikeCount,
+    bool? isDisliked,
   }) {
     return Activity(
       id: id ?? this.id,
@@ -65,6 +77,10 @@ class Activity {
       pointsGenerated: pointsGenerated ?? this.pointsGenerated,
       memberIds: memberIds ?? this.memberIds,
       verificationNote: verificationNote ?? this.verificationNote,
+      likeCount: likeCount ?? this.likeCount,
+      isLiked: isLiked ?? this.isLiked,
+      dislikeCount: dislikeCount ?? this.dislikeCount,
+      isDisliked: isDisliked ?? this.isDisliked,
     );
   }
 }

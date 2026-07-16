@@ -273,6 +273,15 @@ class AdminSidebar extends ConsumerWidget {
           if (isAdmin)
             _buildSubMenuItem(
               context,
+              icon: Icons.data_exploration_outlined,
+              label: 'Penilaian & Audit Poin',
+              selected: currentPath == '/admin/data-management',
+              onTap: () =>
+                  _closeDrawerAndPush(context, '/admin/data-management'),
+            ),
+          if (isAdmin)
+            _buildSubMenuItem(
+              context,
               icon: Icons.emoji_events_outlined,
               label: 'Penilaian Ormawa Awards',
               selected: currentPath == '/admin/ormawa-awards',

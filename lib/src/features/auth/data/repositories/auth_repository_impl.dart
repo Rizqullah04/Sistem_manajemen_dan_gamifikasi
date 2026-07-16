@@ -24,6 +24,21 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<User> updateProfile({
+    required String name,
+    required String nim,
+    required String email,
+  }) async {
+    final user = await _remoteDataSource.updateProfile(
+      name: name,
+      nim: nim,
+      email: email,
+    );
+    _user = user;
+    return user;
+  }
+
+  @override
   Future<(String token, User user)> login({
     required String email,
     required String password,
@@ -39,7 +54,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
-    _remoteDataSource.clearToken();
+    await _remoteDataSource.logout();
     _token = null;
     _user = null;
   }

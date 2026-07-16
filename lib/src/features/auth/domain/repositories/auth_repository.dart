@@ -9,5 +9,10 @@ abstract class AuthRepository {
   User? get currentUser;
   String? get token;
   Future<User> profile();
+  Future<User> updateProfile({
+    required String name,
+    required String nim,
+    required String email,
+  });
   Future<void> logout();
 }

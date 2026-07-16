@@ -79,12 +79,46 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<User> updateProfile({
+    required String name,
+    required String nim,
+    required String email,
+  }) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/profile',
+        data: {'nama': name, 'nim': nim, 'email': email},
+      );
+      final data = response.data?['data'];
+      if (data is! Map<String, dynamic>) {
+        throw const AppException('Response profile tidak valid.');
+      }
+      return _mapUser(data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic> && data['message'] is String) {
+        throw AppException(data['message'] as String);
+      }
+      throw const AppException('Profil tidak dapat disimpan.');
+    }
+  }
+
   bool _isDatabaseConnectionError(String message) {
     final normalized = message.toLowerCase();
     return normalized.contains('sqlstate') ||
         normalized.contains('connection refused') ||
         normalized.contains('database connection') ||
         normalized.contains('could not be made');
+  }
+
+  Future<void> logout() async {
+    try {
+      await _dio.post<Map<String, dynamic>>('/logout');
+    } on DioException {
+      // Logout lokal tetap harus berjalan ketika server tidak dapat dijangkau.
+    } finally {
+      clearToken();
+    }
   }
 
   void clearToken() {
@@ -126,6 +160,7 @@ class AuthRemoteDataSource {
           data['nomor_induk']?.toString() ??
           data['email']?.toString() ??
           '',
+      email: data['email']?.toString() ?? '',
       role: role,
       points: points,
       level: levelFromPoints(effectivePoints),

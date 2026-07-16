@@ -38,8 +38,9 @@ class OrmawaMembersPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return DashboardScaffold(
       title: 'Anggota Ormawa',
-      onLogout: () {
-        ref.read(authControllerProvider.notifier).logout();
+      onLogout: () async {
+        await ref.read(authControllerProvider.notifier).logout();
+        if (!context.mounted) return;
         context.go('/login');
       },
       body: const _OrmawaMembersContent(),

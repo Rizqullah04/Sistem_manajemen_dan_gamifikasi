@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -21,9 +23,19 @@ class DiscussionSection extends ConsumerStatefulWidget {
 class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
   final _controller = TextEditingController();
   bool _isSubmitting = false;
+  Timer? _guardTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _guardTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
+    _guardTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -118,6 +130,9 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
                 },
               ),
             const SizedBox(height: 8),
+            if (currentUser != null &&
+                currentUser.role != UserRole.adminFaculty)
+              _buildSpamGuardNotice(comments, currentUser.id),
             Row(
               children: [
                 Expanded(
@@ -151,6 +166,26 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
     final content = _controller.text.trim();
     if (user == null || content.isEmpty) return;
 
+    final comments = ref
+            .read(commentsStreamProvider(widget.activityId))
+            .valueOrNull ??
+        const <CommentItem>[];
+    final guardMessage = _commentGuardMessage(
+      comments: comments,
+      userId: user.id,
+      content: content,
+      isAdmin: user.role == UserRole.adminFaculty,
+    );
+    if (guardMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(guardMessage),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       await ref
@@ -173,6 +208,150 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  Widget _buildSpamGuardNotice(List<CommentItem> comments, String userId) {
+    final now = DateTime.now();
+    final ownComments = comments
+        .where((item) => item.userId == userId)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final recentCount = ownComments
+        .where((item) => now.difference(item.createdAt).inMinutes < 10)
+        .length;
+    final rewardedLimitReached = ownComments.length >= 3;
+    final remainingSeconds = ownComments.isEmpty
+        ? 0
+        : 30 - now.difference(ownComments.first.createdAt).inSeconds;
+
+    final String message;
+    final IconData icon;
+    final Color color;
+    if (remainingSeconds > 0) {
+      message =
+          'Tunggu $remainingSeconds detik sebelum mengirim komentar berikutnya.';
+      icon = Icons.timer_outlined;
+      color = Colors.orange;
+    } else if (recentCount >= 5) {
+      message =
+          'Batas 5 komentar dalam 10 menit tercapai. Coba lagi beberapa menit lagi.';
+      icon = Icons.block_outlined;
+      color = Theme.of(context).colorScheme.error;
+    } else if (recentCount >= 4) {
+      message =
+          'Peringatan anti-spam: Anda sudah mengirim $recentCount dari maksimal 5 komentar dalam 10 menit.';
+      icon = Icons.warning_amber_rounded;
+      color = Colors.orange;
+    } else {
+      message = rewardedLimitReached
+          ? 'Batas 3 komentar berpoin pada kegiatan ini sudah tercapai. Anda tetap dapat berdiskusi tanpa memperoleh poin tambahan.'
+          : 'Anti-spam: jeda 30 detik, maksimal 5 komentar per 10 menit. Hanya 3 komentar pertama per kegiatan yang memperoleh poin.';
+      icon = Icons.shield_outlined;
+      color = Theme.of(context).colorScheme.primary;
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(message, style: const TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _commentGuardMessage({
+    required List<CommentItem> comments,
+    required String userId,
+    required String content,
+    required bool isAdmin,
+  }) {
+    if (isAdmin) return null;
+    final now = DateTime.now();
+    final ownComments = comments
+        .where((item) => item.userId == userId)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (ownComments.isNotEmpty) {
+      final remaining = 30 - now.difference(ownComments.first.createdAt).inSeconds;
+      if (remaining > 0) {
+        return 'Tunggu $remaining detik sebelum mengirim komentar lagi.';
+      }
+    }
+
+    final recentCount = ownComments
+        .where((item) => now.difference(item.createdAt).inMinutes < 10)
+        .length;
+    if (recentCount >= 5) {
+      return 'Batas 5 komentar dalam 10 menit sudah tercapai.';
+    }
+
+    final normalized = _normalizeComment(content);
+    final exactDuplicate = ownComments.any(
+      (item) => _normalizeComment(item.content) == normalized,
+    );
+    if (exactDuplicate) {
+      return 'Komentar yang sama sudah pernah Anda kirim pada kegiatan ini.';
+    }
+
+    final nearDuplicate = ownComments.any((item) {
+      final age = now.difference(item.createdAt);
+      if (age > const Duration(days: 7)) return false;
+      return _commentSimilarity(normalized, _normalizeComment(item.content)) >=
+          0.85;
+    });
+    if (nearDuplicate) {
+      return 'Komentar terlalu mirip dengan komentar Anda dalam 7 hari terakhir.';
+    }
+
+    return null;
+  }
+
+  String _normalizeComment(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  double _commentSimilarity(String first, String second) {
+    if (first.isEmpty || second.isEmpty) return 0;
+    final longest = first.length > second.length ? first.length : second.length;
+    return 1 - (_levenshteinDistance(first, second) / longest);
+  }
+
+  int _levenshteinDistance(String first, String second) {
+    var previous = List<int>.generate(second.length + 1, (index) => index);
+    for (var firstIndex = 1; firstIndex <= first.length; firstIndex++) {
+      final current = List<int>.filled(second.length + 1, 0);
+      current[0] = firstIndex;
+      for (var secondIndex = 1;
+          secondIndex <= second.length;
+          secondIndex++) {
+        final cost = first[firstIndex - 1] == second[secondIndex - 1] ? 0 : 1;
+        final deletion = previous[secondIndex] + 1;
+        final insertion = current[secondIndex - 1] + 1;
+        final substitution = previous[secondIndex - 1] + cost;
+        current[secondIndex] = [deletion, insertion, substitution]
+            .reduce((a, b) => a < b ? a : b);
+      }
+      previous = current;
+    }
+    return previous.last;
   }
 
   Future<void> _confirmDeleteComment(CommentItem item) async {

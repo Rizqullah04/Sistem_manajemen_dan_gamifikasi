@@ -780,7 +780,16 @@ class _ActivityTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeline = logs.isEmpty ? _defaultTimeline : logs.take(5).toList();
+    if (logs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text(
+          'Belum ada riwayat poin.',
+          style: TextStyle(color: _GamificationColors.muted),
+        ),
+      );
+    }
+    final timeline = logs.take(5).toList();
     return Column(
       children: [
         for (var index = 0; index < timeline.length; index++)
@@ -793,22 +802,6 @@ class _ActivityTimeline extends StatelessWidget {
     );
   }
 
-  static final _defaultTimeline = [
-    StudentPointLogModel(
-      id: 'default-1',
-      source: 'TODAY',
-      points: 0,
-      description: 'Mulai kumpulkan poin dari kegiatan dan diskusi ormawa.',
-      date: DateTime.now(),
-    ),
-    StudentPointLogModel(
-      id: 'default-2',
-      source: 'NEXT',
-      points: 0,
-      description: 'Badge pertama akan terbuka setelah mencapai milestone poin.',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
 }
 
 class _TimelineItem extends StatelessWidget {

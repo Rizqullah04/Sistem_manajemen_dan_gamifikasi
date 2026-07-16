@@ -75,9 +75,17 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  void updateProfile({required String name}) {
-    if (state.user == null) return;
-    state = state.copyWith(user: state.user!.copyWith(name: name));
+  Future<void> updateProfile({
+    required String name,
+    required String nim,
+    required String email,
+  }) async {
+    final user = await _authRepository.updateProfile(
+      name: name,
+      nim: nim,
+      email: email,
+    );
+    state = state.copyWith(user: user, errorMessage: null);
   }
 
   Future<void> refreshProfile() async {

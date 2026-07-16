@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/providers/dashboard_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/providers/settings_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/widgets/admin_monitoring_card.dart';
@@ -18,6 +19,10 @@ class DashboardContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
+    if (user == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final summaryAsync = ref.watch(realtimeDashboardSummaryProvider);
     final settings = ref.watch(dashboardSettingsProvider).valueOrNull;
     return summaryAsync.when(

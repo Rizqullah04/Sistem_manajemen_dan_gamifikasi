@@ -46,15 +46,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         );
       }
 
-      final data = body['data'];
-      final otp = data is Map ? data['otp']?.toString() ?? '1234' : '1234';
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('OTP demo: $otp')));
+      ).showSnackBar(const SnackBar(content: Text('OTP telah dikirim ke email.')));
       context.push(
         '/forgot-password/otp',
-        extra: {'email': _emailController.text.trim(), 'otp': otp},
+        extra: {'email': _emailController.text.trim()},
       );
     } catch (error) {
       if (!mounted) return;
@@ -71,7 +69,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return _AuthResetScaffold(
       title: 'Lupa Kata Sandi',
       subtitle:
-          'Masukkan email akun yang terdaftar untuk mendapatkan OTP demo.',
+          'Masukkan email akun yang terdaftar untuk mendapatkan OTP.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -86,7 +84,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
             const SizedBox(height: 20),
             PrimaryButton(
-              label: 'Kirim OTP Demo',
+              label: 'Kirim OTP',
               isLoading: _isLoading,
               onPressed: _requestOtp,
             ),
@@ -108,12 +106,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 class VerifyOtpPage extends StatefulWidget {
   const VerifyOtpPage({
     required this.email,
-    required this.expectedOtp,
     super.key,
   });
 
   final String email;
-  final String expectedOtp;
 
   @override
   State<VerifyOtpPage> createState() => _VerifyOtpPageState();
@@ -129,11 +125,18 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
     super.dispose();
   }
 
-  void _verifyOtp() {
+  Future<void> _verifyOtp() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_otpController.text.trim() != widget.expectedOtp) {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/verify-reset-otp'),
+      headers: const {'Accept': 'application/json', 'Content-Type': 'application/json'},
+      body: jsonEncode({'email': widget.email, 'otp': _otpController.text.trim()}),
+    );
+    if (!mounted) return;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final body = _decodeBody(response.body);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP tidak valid. Gunakan kode 1234.')),
+        SnackBar(content: Text(_messageFrom(body, 'OTP tidak valid.'))),
       );
       return;
     }
@@ -148,7 +151,7 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
   Widget build(BuildContext context) {
     return _AuthResetScaffold(
       title: 'Verifikasi OTP',
-      subtitle: 'Masukkan OTP demo untuk ${widget.email}. Kode demo: 1234.',
+      subtitle: 'Masukkan OTP enam digit yang dikirim ke ${widget.email}.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -156,13 +159,14 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
           children: [
             CustomTextField(
               label: 'OTP',
-              hintText: 'Masukkan 1234',
+              hintText: 'Masukkan 6 digit OTP',
               controller: _otpController,
               keyboardType: TextInputType.number,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'OTP wajib diisi';
                 }
+                if (value.trim().length != 6) return 'OTP harus 6 digit';
                 return null;
               },
             ),

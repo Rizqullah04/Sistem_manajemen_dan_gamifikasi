@@ -19,6 +19,7 @@ class PenilaianResource extends JsonResource
             'nilai_publikasi' => $this->nilai_publikasi,
             'total_nilai' => $this->total_nilai,
             'komentar' => $this->komentar,
+            'kegiatan' => $this->whenLoaded('kegiatan', fn () => new KegiatanResource($this->kegiatan)),
             'juri' => $this->whenLoaded('juri', fn () => new UserResource($this->juri)),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

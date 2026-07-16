@@ -92,6 +92,11 @@ class User extends Authenticatable
         return $this->hasMany(LikeKegiatan::class, 'id_user', 'id_user');
     }
 
+    public function dislikeKegiatans(): HasMany
+    {
+        return $this->hasMany(DislikeKegiatan::class, 'id_user', 'id_user');
+    }
+
     public function chatTerkirim(): HasMany
     {
         return $this->hasMany(Chat::class, 'id_pengirim', 'id_user');

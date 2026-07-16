@@ -11,9 +11,31 @@ abstract class ActivityRepository {
   Future<Activity> createActivity(Activity activity);
   Future<Activity> updateActivity(Activity activity);
   Future<void> deleteActivity(String activityId);
+  Future<void> setActivityLiked(String activityId, bool liked);
+  Future<void> setActivityDisliked({
+    required String activityId,
+    required bool disliked,
+    String? reason,
+    String? solution,
+  });
+  Future<List<ActivityFeedback>> fetchActivityFeedback(String activityId);
   Future<Activity> verifyActivity({
     required String activityId,
     required ActivityStatus status,
     required String note,
   });
+}
+
+class ActivityFeedback {
+  const ActivityFeedback({
+    required this.userName,
+    required this.reason,
+    required this.solution,
+    this.createdAt,
+  });
+
+  final String userName;
+  final String reason;
+  final String solution;
+  final DateTime? createdAt;
 }

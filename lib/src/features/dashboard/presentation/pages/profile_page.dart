@@ -1,8 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
@@ -13,18 +11,8 @@ class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    try {
-      await ref.read(dioProvider).post<Map<String, dynamic>>('/logout');
-      ref.read(dioProvider).options.headers.remove('Authorization');
-      await ref.read(authControllerProvider.notifier).logout();
-      if (context.mounted) context.go('/login');
-    } on DioException {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Logout gagal. Periksa koneksi API.')),
-      );
-    }
+    await ref.read(authControllerProvider.notifier).logout();
+    if (context.mounted) context.go('/login');
   }
 
   @override

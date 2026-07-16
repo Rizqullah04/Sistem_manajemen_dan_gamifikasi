@@ -135,12 +135,23 @@ class DashboardScaffold extends ConsumerWidget {
               child: const Text('Batal'),
             ),
             FilledButton(
-              onPressed: () {
+              onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
-                ref
-                    .read(authControllerProvider.notifier)
-                    .updateProfile(name: nameController.text.trim());
-                Navigator.pop(context);
+                try {
+                  await ref
+                      .read(authControllerProvider.notifier)
+                      .updateProfile(
+                        name: nameController.text.trim(),
+                        nim: user.studentStaffId,
+                        email: user.email,
+                      );
+                  if (context.mounted) Navigator.pop(context);
+                } catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error.toString())),
+                  );
+                }
               },
               child: const Text('Simpan'),
             ),

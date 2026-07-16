@@ -803,8 +803,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
 
     setState(() => _isSubmitting = true);
     try {
-      final createdVoting = _buildCreatedVoting(pollOptions);
-      await ref
+      final createdVoting = await ref
           .read(votingControllerProvider.notifier)
           .createVoting(
             title: _titleController.text.trim(),
@@ -840,27 +839,6 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
     }
   }
 
-  Voting _buildCreatedVoting(List<String> pollOptions) {
-    final createdAt = DateTime.now().microsecondsSinceEpoch;
-    return Voting(
-      id: 'local-$createdAt',
-      type: _selectedType,
-      relatedId: _titleController.text.trim(),
-      creatorName: widget.user.name,
-      startDate: _startDate,
-      endDate: _endDate,
-      status: 'AKTIF',
-      voterIds: const {},
-      options: [
-        for (var index = 0; index < pollOptions.length; index++)
-          VoteOption(
-            id: 'local-$createdAt-option-$index',
-            title: pollOptions[index],
-            votes: 0,
-          ),
-      ],
-    );
-  }
 }
 
 class _DatePickerField extends StatelessWidget {
@@ -1196,7 +1174,7 @@ class _VotingCard extends ConsumerWidget {
               }),
               if (user != null && !canUseVote)
                 Text(
-                  'Voting hanya tersedia untuk akun anggota resmi $creatorOrmawaName.',
+                  'Voting tersedia untuk seluruh akun mahasiswa aktif. Akun admin dan Ormawa bertindak sebagai pengelola voting.',
                 ),
               if (hasVoted) const Text('Anda sudah menggunakan hak suara.'),
             ],
@@ -1542,7 +1520,7 @@ class _VoteActionButtonState extends State<_VoteActionButton>
     if (!widget.canVote) {
       await _shakeController.forward(from: 0);
       if (!mounted) return;
-      _showMemberOnlySheet(context, widget.ormawaName);
+      _showMemberOnlySheet(context);
       return;
     }
 
@@ -1555,7 +1533,7 @@ class _VoteActionButtonState extends State<_VoteActionButton>
   }
 }
 
-void _showMemberOnlySheet(BuildContext context, String ormawaName) {
+void _showMemberOnlySheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -1579,14 +1557,14 @@ void _showMemberOnlySheet(BuildContext context, String ormawaName) {
               ),
               const SizedBox(height: 16),
               Text(
-                'Fitur ini khusus Anggota',
+                'Gunakan Akun Mahasiswa',
                 style: Theme.of(
                   sheetContext,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
-                'Voting hanya tersedia untuk akun anggota resmi $ormawaName. Yuk, daftar atau lengkapi profilmu di sini untuk ikut voting!',
+                'Voting tersedia untuk seluruh akun mahasiswa aktif. Masuk dengan akun mahasiswa untuk menggunakan hak suara.',
               ),
               const SizedBox(height: 18),
               SizedBox(
@@ -1594,10 +1572,9 @@ void _showMemberOnlySheet(BuildContext context, String ormawaName) {
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.of(sheetContext).pop();
-                    context.push('/profile');
                   },
-                  icon: const Icon(Icons.person_add_alt_1_rounded),
-                  label: const Text('Lengkapi Profil'),
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Mengerti'),
                 ),
               ),
             ],

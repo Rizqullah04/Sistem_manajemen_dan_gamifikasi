@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DiskusiResource;
 use App\Models\Diskusi;
+use App\Models\PoinLog;
 use App\Services\PoinService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -37,18 +38,39 @@ class DiskusiController extends Controller
             return $spamResponse;
         }
 
+        $priorCommentIds = Diskusi::query()
+            ->where('id_user', $request->user()->id_user)
+            ->where('id_kegiatan', $data['id_kegiatan'])
+            ->pluck('id_diskusi');
+        $rewardedCommentCount = $priorCommentIds->isEmpty()
+            ? 0
+            : PoinLog::query()
+                ->whereIn('sumber', ['komentar', 'balasan'])
+                ->whereIn('referensi_id', $priorCommentIds)
+                ->count();
+
         $data['id_user'] = $request->user()->id_user;
         $data['tanggal'] = now();
 
         $diskusi = Diskusi::create($data)->load('user');
 
-        if ($diskusi->parent_id && $request->user()->role === 'ormawa' && $request->user()->ormawa) {
+        $pointsAwarded = false;
+        if ($rewardedCommentCount < 3 && $diskusi->parent_id && $request->user()->role === 'ormawa' && $request->user()->ormawa) {
             $poinService->tambahPoinOrmawa($request->user()->ormawa, 'balasan', $diskusi->id_diskusi, 2, 'Membalas komentar diskusi');
-        } elseif ($request->user()->role === 'anggota') {
+            $pointsAwarded = true;
+        } elseif ($rewardedCommentCount < 3 && $request->user()->role === 'anggota') {
             $poinService->tambahPoinUser($request->user(), 'komentar', $diskusi->id_diskusi, 15, 'Menulis komentar diskusi');
+            $pointsAwarded = true;
         }
 
-        return $this->successResponse('Komentar berhasil dibuat', new DiskusiResource($diskusi), 201);
+        $message = match (true) {
+            $pointsAwarded => 'Komentar berhasil dibuat dan poin diberikan.',
+            $request->user()->role === 'admin' => 'Komentar berhasil dibuat. Admin tidak memperoleh poin komentar.',
+            $rewardedCommentCount >= 3 => 'Komentar berhasil dibuat tanpa poin karena batas 3 komentar berpoin per kegiatan telah tercapai.',
+            default => 'Komentar berhasil dibuat tanpa poin.',
+        };
+
+        return $this->successResponse($message, new DiskusiResource($diskusi), 201);
     }
 
     public function destroy(Diskusi $diskusi, PoinService $poinService): JsonResponse
@@ -98,15 +120,29 @@ class DiskusiController extends Controller
             return $this->errorResponse('Komentar terlalu sering. Coba lagi beberapa menit lagi.', status: 429);
         }
 
-        $sameCommentExists = Diskusi::query()
+        $previousComments = Diskusi::query()
             ->where('id_user', $userId)
             ->where('id_kegiatan', $kegiatanId)
-            ->whereDate('tanggal', today())
-            ->get(['komentar'])
-            ->contains(fn (Diskusi $diskusi) => $this->normalisasiKomentar($diskusi->komentar) === $normalizedComment);
+            ->get(['komentar', 'tanggal']);
+
+        $sameCommentExists = $previousComments->contains(
+            fn (Diskusi $diskusi) => $this->normalisasiKomentar($diskusi->komentar) === $normalizedComment
+        );
 
         if ($sameCommentExists) {
-            return $this->errorResponse('Komentar yang sama sudah pernah dikirim hari ini.', status: 422);
+            return $this->errorResponse('Komentar yang sama sudah pernah dikirim pada kegiatan ini.', status: 422);
+        }
+
+        $nearDuplicateExists = $previousComments
+            ->where('tanggal', '>=', now()->subDays(7))
+            ->contains(function (Diskusi $diskusi) use ($normalizedComment): bool {
+                $previous = $this->normalisasiKomentar($diskusi->komentar);
+
+                return $this->kemiripanKomentar($normalizedComment, $previous) >= 85.0;
+            });
+
+        if ($nearDuplicateExists) {
+            return $this->errorResponse('Komentar terlalu mirip dengan komentar Anda dalam 7 hari terakhir.', status: 422);
         }
 
         return null;
@@ -114,6 +150,19 @@ class DiskusiController extends Controller
 
     private function normalisasiKomentar(string $komentar): string
     {
-        return mb_strtolower(trim((string) preg_replace('/\s+/', ' ', $komentar)));
+        $tanpaTandaBaca = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $komentar);
+
+        return mb_strtolower(trim((string) preg_replace('/\s+/', ' ', (string) $tanpaTandaBaca)));
+    }
+
+    private function kemiripanKomentar(string $first, string $second): float
+    {
+        if ($first === '' || $second === '') {
+            return 0.0;
+        }
+
+        similar_text($first, $second, $percentage);
+
+        return $percentage;
     }
 }

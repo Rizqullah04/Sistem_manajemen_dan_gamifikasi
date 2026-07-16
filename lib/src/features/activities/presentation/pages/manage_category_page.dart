@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 
 class ManageCategoryPage extends StatefulWidget {
   const ManageCategoryPage({
     required this.initialCategories,
+    required this.dio,
     this.onCategoriesChanged,
     super.key,
   });
 
   final List<String> initialCategories;
+  final Dio dio;
   final ValueChanged<List<String>>? onCategoriesChanged;
 
   @override
@@ -127,14 +130,26 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
     controller.dispose();
     if (result == null || result.isEmpty) return;
 
-    setState(() {
+    try {
       if (isEditing) {
-        _categories[index] = result;
+        final id = await _findId(initialValue!);
+        await widget.dio.patch<Map<String, dynamic>>(
+          '/kategori-kegiatans/$id',
+          data: {'nama_kategori': result},
+        );
+        setState(() => _categories[index] = result);
       } else {
-        _categories.add(result);
+        await widget.dio.post<Map<String, dynamic>>(
+          '/kategori-kegiatans',
+          data: {'nama_kategori': result},
+        );
+        setState(() => _categories.add(result));
       }
-    });
-    _notifyChanged();
+      _notifyChanged();
+    } on DioException catch (error) {
+      if (!mounted) return;
+      _showError(error.response?.data?['message']?.toString() ?? 'Kategori gagal disimpan.');
+    }
   }
 
   Future<void> _confirmDelete(int index) async {
@@ -175,8 +190,32 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
     );
 
     if (confirmed != true) return;
-    setState(() => _categories.removeAt(index));
-    _notifyChanged();
+    try {
+      final id = await _findId(category);
+      await widget.dio.delete<Map<String, dynamic>>('/kategori-kegiatans/$id');
+      setState(() => _categories.removeAt(index));
+      _notifyChanged();
+    } on DioException catch (error) {
+      if (!mounted) return;
+      _showError(error.response?.data?['message']?.toString() ?? 'Kategori gagal dihapus.');
+    }
+  }
+
+  Future<String> _findId(String name) async {
+    final response = await widget.dio.get<Map<String, dynamic>>('/kategori-kegiatans');
+    final data = response.data?['data'];
+    if (data is List) {
+      for (final item in data.whereType<Map<String, dynamic>>()) {
+        if (item['nama_kategori']?.toString() == name) {
+          return item['id'].toString();
+        }
+      }
+    }
+    throw StateError('Kategori tidak ditemukan.');
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _notifyChanged() {

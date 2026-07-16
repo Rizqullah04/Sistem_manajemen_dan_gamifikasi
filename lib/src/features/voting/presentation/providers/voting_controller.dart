@@ -35,14 +35,14 @@ class VotingController extends StateNotifier<VotingState> {
 
   final Ref _ref;
 
-  Future<void> createVoting({
+  Future<Voting> createVoting({
     required String title,
     required VotingType type,
     required DateTime startDate,
     required DateTime endDate,
     required List<String> pollOptions,
   }) async {
-    await _ref
+    final createdVoting = await _ref
         .read(votingRepositoryProvider)
         .createVoting(
           title: title,
@@ -52,6 +52,7 @@ class VotingController extends StateNotifier<VotingState> {
           pollOptions: pollOptions,
         );
     await load();
+    return createdVoting;
   }
 
   Future<void> load() async {

@@ -21,8 +21,9 @@ class DashboardLeaderboardPage extends ConsumerWidget {
 
     return DashboardScaffold(
       title: 'Leaderboard',
-      onLogout: () {
-        ref.read(authControllerProvider.notifier).logout();
+      onLogout: () async {
+        await ref.read(authControllerProvider.notifier).logout();
+        if (!context.mounted) return;
         context.go('/login');
       },
       body: const LeaderboardPage(

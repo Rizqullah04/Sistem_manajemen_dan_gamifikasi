@@ -137,6 +137,12 @@ class ActivityController extends StateNotifier<ActivityState> {
     await loadInitial();
   }
 
+  Future<void> toggleLike(Activity activity) async {
+    await _ref.read(activityRepositoryProvider).setActivityLiked(activity.id, !activity.isLiked);
+    await refreshPointDependentState(_ref);
+    await loadInitial();
+  }
+
   Future<void> verify({
     required String activityId,
     required ActivityStatus status,

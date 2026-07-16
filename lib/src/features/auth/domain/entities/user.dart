@@ -5,6 +5,7 @@ class User {
     required this.id,
     required this.name,
     required this.studentStaffId,
+    this.email = '',
     required this.role,
     required this.points,
     required this.level,
@@ -16,6 +17,7 @@ class User {
   final String id;
   final String name;
   final String studentStaffId;
+  final String email;
   final UserRole role;
   final int points;
   final int level;
@@ -32,6 +34,7 @@ class User {
     String? id,
     String? name,
     String? studentStaffId,
+    String? email,
     UserRole? role,
     int? points,
     int? level,
@@ -43,6 +46,7 @@ class User {
       id: id ?? this.id,
       name: name ?? this.name,
       studentStaffId: studentStaffId ?? this.studentStaffId,
+      email: email ?? this.email,
       role: role ?? this.role,
       points: points ?? this.points,
       level: level ?? this.level,

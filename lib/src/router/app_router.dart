@@ -7,6 +7,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/p
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/pages/register_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_dashboard_page.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_data_management_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_ormawa_awards_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/admin_student_management_page.dart';
@@ -60,10 +61,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           if (extra is! Map) return const ForgotPasswordPage();
 
           final email = extra['email']?.toString() ?? '';
-          final otp = extra['otp']?.toString() ?? '1234';
           if (email.isEmpty) return const ForgotPasswordPage();
 
-          return VerifyOtpPage(email: email, expectedOtp: otp);
+          return VerifyOtpPage(email: email);
         },
       ),
       GoRoute(
@@ -102,6 +102,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/gamification/badges',
         builder: (context, state) => const AchievementPage(),
+      ),
+      GoRoute(
+        path: '/admin/data-management',
+        builder: (context, state) => const AdminDataManagementPage(),
       ),
       GoRoute(
         path: '/ormawa',

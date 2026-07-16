@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ActivityTypeController;
 use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DiskusiController;
+use App\Http\Controllers\Api\DislikeKegiatanController;
 use App\Http\Controllers\Api\DokumentasiKegiatanController;
 use App\Http\Controllers\Api\KegiatanController;
+use App\Http\Controllers\Api\KategoriKegiatanController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LikeKegiatanController;
 use App\Http\Controllers\Api\OrmawaController;
@@ -21,22 +24,29 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::apiResource('ormawas', OrmawaController::class)->only(['index', 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::patch('/profile', [AuthController::class, 'updateProfile']);
     Route::get('/profile/gamification', [AuthController::class, 'gamificationProfile']);
 
     Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 
     Route::apiResource('kegiatans', KegiatanController::class)->only(['index', 'show']);
+    Route::apiResource('kategori-kegiatans', KategoriKegiatanController::class)->only(['index', 'show']);
     Route::apiResource('votings', VotingController::class)->only(['index', 'show']);
     Route::apiResource('diskusis', DiskusiController::class)->only(['index', 'store', 'destroy']);
     Route::apiResource('dokumentasi-kegiatans', DokumentasiKegiatanController::class)->only(['index', 'store']);
     Route::apiResource('chats', ChatController::class)->only(['index', 'store', 'update']);
     Route::post('/like-kegiatans', [LikeKegiatanController::class, 'store']);
+    Route::delete('/kegiatans/{kegiatan}/like', [LikeKegiatanController::class, 'destroyForActivity']);
+    Route::post('/dislike-kegiatans', [DislikeKegiatanController::class, 'store']);
+    Route::delete('/kegiatans/{kegiatan}/dislike', [DislikeKegiatanController::class, 'destroy']);
+    Route::get('/kegiatans/{kegiatan}/feedback', [DislikeKegiatanController::class, 'index']);
     Route::delete('/like-kegiatans/{likeKegiatan}', [LikeKegiatanController::class, 'destroy']);
     Route::post('/vote-details', [VoteDetailController::class, 'store'])->middleware('role:anggota');
 
@@ -50,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/ormawa-awards/preview', [OrmawaAwardController::class, 'preview']);
         Route::post('/ormawa-awards/generate', [OrmawaAwardController::class, 'generate']);
         Route::apiResource('badges', BadgeController::class);
+        Route::apiResource('activity-types', ActivityTypeController::class);
+        Route::apiResource('kategori-kegiatans', KategoriKegiatanController::class)->except(['index', 'show']);
         Route::apiResource('penilaians', PenilaianController::class);
         Route::get('/poin-logs', [PoinLogController::class, 'index']);
         Route::patch('/ormawas/{ormawa}/recalculate-poin', [PoinLogController::class, 'recalculateOrmawa']);

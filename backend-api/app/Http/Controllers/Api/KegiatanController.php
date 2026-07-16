@@ -22,8 +22,11 @@ class KegiatanController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $kegiatans = Kegiatan::with(['ormawa', 'votings', 'verifikasis.admin', 'dokumentasiKegiatans'])
+        $kegiatans = Kegiatan::with(['ormawa', 'kategori', 'votings', 'verifikasis.admin', 'dokumentasiKegiatans'])
             ->withCount('likeKegiatans')
+            ->withCount('dislikeKegiatans')
+            ->withExists(['likeKegiatans as disukai_user' => fn ($query) => $query->where('id_user', $request->user()->id_user)])
+            ->withExists(['dislikeKegiatans as tidak_disukai_user' => fn ($query) => $query->where('id_user', $request->user()->id_user)])
             ->when($request->user()->role === 'ormawa', function ($query) use ($request) {
                 $query->where('id_ormawa', $request->user()->id_ormawa);
             })
@@ -45,7 +48,7 @@ class KegiatanController extends Controller
 
         $data['status'] = Kegiatan::STATUS_PENDING;
 
-        $kegiatan = Kegiatan::create($data)->load(['ormawa', 'votings', 'verifikasis.admin'])->loadCount('likeKegiatans');
+        $kegiatan = Kegiatan::create($data)->load(['ormawa', 'kategori', 'votings', 'verifikasis.admin'])->loadCount('likeKegiatans');
 
         return $this->successResponse('Kegiatan berhasil dibuat', new KegiatanResource($kegiatan), 201);
     }
@@ -58,7 +61,7 @@ class KegiatanController extends Controller
 
         return $this->successResponse(
             'Detail kegiatan berhasil diambil',
-            new KegiatanResource($kegiatan->load(['ormawa', 'votings', 'verifikasis.admin', 'dokumentasiKegiatans', 'diskusis.user'])->loadCount('likeKegiatans'))
+            new KegiatanResource($kegiatan->load(['ormawa', 'kategori', 'votings', 'verifikasis.admin', 'dokumentasiKegiatans', 'diskusis.user'])->loadCount('likeKegiatans'))
         );
     }
 

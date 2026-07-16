@@ -154,8 +154,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildAvatarEditor(),
-                const SizedBox(height: 24),
                 _buildSectionTitle('Identitas Utama'),
                 const SizedBox(height: 14),
                 _buildTextField(
@@ -184,35 +182,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   hint: 'Masukkan nomor HP',
                   keyboardType: TextInputType.phone,
                 ),
-                const SizedBox(height: 24),
-                _buildSectionTitle('Akademik'),
-                const SizedBox(height: 14),
-                _buildTextField(
-                  controller: _facultyController,
-                  label: 'Fakultas',
-                  hint: 'Contoh: Fakultas Teknik',
+                const SizedBox(height: 12),
+                const Text(
+                  'Data organisasi, peran, dan poin dikelola oleh sistem dan tidak dapat diubah dari profil.',
+                  style: TextStyle(color: Colors.white60, height: 1.4),
                 ),
-                const SizedBox(height: 14),
-                _buildTextField(
-                  controller: _studyProgramController,
-                  label: 'Program Studi',
-                  hint: 'Contoh: Teknik Informatika',
-                ),
-                const SizedBox(height: 14),
-                _buildTextField(
-                  controller: _batchYearController,
-                  label: 'Angkatan',
-                  hint: 'Contoh: 2022',
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 24),
-                _buildSectionTitle('Organisasi'),
-                const SizedBox(height: 14),
-                _buildOrmawaDropdown(),
-                const SizedBox(height: 24),
-                _buildSectionTitle('Personal'),
-                const SizedBox(height: 14),
-                _buildBirthDateField(context),
                 const SizedBox(height: 30),
                 _buildSaveButton(),
               ],

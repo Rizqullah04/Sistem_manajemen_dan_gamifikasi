@@ -200,7 +200,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                    'SSO belum diaktifkan. Gunakan akun mock.',
+                                    'SSO belum diaktifkan. Gunakan akun yang terdaftar pada sistem.',
                                   ),
                                 ),
                               );

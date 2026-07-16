@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LikeKegiatanResource;
 use App\Models\LikeKegiatan;
+use App\Models\Kegiatan;
+use App\Models\DislikeKegiatan;
 use App\Services\PoinService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +29,10 @@ class LikeKegiatanController extends Controller
             'tanggal' => now(),
         ]);
 
+        DislikeKegiatan::where('id_kegiatan', $data['id_kegiatan'])
+            ->where('id_user', $request->user()->id_user)
+            ->delete();
+
         if ($like->wasRecentlyCreated) {
             $poinService->tambahPoinUser($request->user(), 'like', $like->id_like, 1, 'Memberi like kegiatan');
         }
@@ -47,5 +53,20 @@ class LikeKegiatanController extends Controller
         $likeKegiatan->delete();
 
         return $this->successResponse('Like kegiatan berhasil dihapus');
+    }
+
+    public function destroyForActivity(Kegiatan $kegiatan, PoinService $poinService): JsonResponse
+    {
+        $like = LikeKegiatan::where('id_kegiatan', $kegiatan->id_kegiatan)
+            ->where('id_user', request()->user()->id_user)
+            ->first();
+        if ($like === null) {
+            return $this->successResponse('Like kegiatan sudah tidak aktif.');
+        }
+
+        $poinService->batalkanPoinUser(request()->user(), 'like', $like->id_like);
+        $like->delete();
+
+        return $this->successResponse('Like kegiatan berhasil dihapus.');
     }
 }

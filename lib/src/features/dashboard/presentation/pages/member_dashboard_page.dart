@@ -3,16 +3,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/activity_card.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/badge_widget.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/dashboard_header.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/leaderboard_card.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/leaderboard_preview.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/point_card.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/providers/activity_controller.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
@@ -23,6 +22,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentat
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/providers/settings_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/pages/edit_profile_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/presentation/widgets/discussion_section.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/leaderboard/presentation/pages/leaderboard_page.dart';
 
 class MemberDashboardPage extends ConsumerStatefulWidget {
@@ -36,12 +36,6 @@ class MemberDashboardPage extends ConsumerStatefulWidget {
 class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   int _selectedIndex = 0;
 
-  final List<String> _badges = [
-    'Early Bird',
-    'On Fire',
-    'Team Player',
-    'Night Owl',
-  ];
   final Set<String> _readNotificationKeys = <String>{};
   MemberProfileData? _profileData;
 
@@ -467,7 +461,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                   ),
                   const Spacer(),
                   Text(
-                    '+${item.pointsGenerated} pts',
+                    '${item.pointsGenerated} poin untuk Ormawa',
                     style: const TextStyle(
                       color: Colors.amberAccent,
                       fontWeight: FontWeight.w700,
@@ -476,18 +470,30 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 ],
               ),
               const SizedBox(height: 10),
-              const Row(
+              Row(
                 children: [
-                  Icon(
-                    Icons.touch_app_rounded,
-                    size: 15,
-                    color: Colors.white38,
+                  TextButton.icon(
+                    onPressed: () => _toggleActivityLike(item),
+                    icon: Icon(
+                      item.isLiked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                    ),
+                    label: Text('${item.likeCount} Suka'),
                   ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Ketuk untuk detail dan diskusi',
-                    style: TextStyle(color: Colors.white38, fontSize: 12),
+                  TextButton.icon(
+                    onPressed: () => _handleActivityDislike(item),
+                    icon: Icon(
+                      item.isDisliked
+                          ? Icons.thumb_down_rounded
+                          : Icons.thumb_down_outlined,
+                    ),
+                    label: Text('${item.dislikeCount} Masukan'),
                   ),
+                  const Spacer(),
+                  const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  const SizedBox(width: 6),
+                  const Text('Detail & komentar'),
                 ],
               ),
             ],
@@ -514,8 +520,123 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     );
   }
 
+  Future<void> _toggleActivityLike(Activity item) async {
+    try {
+      await ref
+          .read(activityRepositoryProvider)
+          .setActivityLiked(item.id, !item.isLiked);
+      await ref.read(activityControllerProvider.notifier).loadInitial();
+      await refreshPointDependentWidgetState(ref);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Like kegiatan gagal: $error')),
+      );
+    }
+  }
+
+  Future<void> _handleActivityDislike(Activity item) async {
+    try {
+      if (item.isDisliked) {
+        await ref.read(activityRepositoryProvider).setActivityDisliked(
+              activityId: item.id,
+              disliked: false,
+            );
+      } else {
+        final feedback = await _askDislikeFeedback(context);
+        if (feedback == null) return;
+        await ref.read(activityRepositoryProvider).setActivityDisliked(
+              activityId: item.id,
+              disliked: true,
+              reason: feedback.$1,
+              solution: feedback.$2,
+            );
+      }
+      await ref.read(activityControllerProvider.notifier).loadInitial();
+      await refreshPointDependentWidgetState(ref);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Masukan kegiatan gagal: $error')),
+      );
+    }
+  }
+
+  Future<(String, String)?> _askDislikeFeedback(BuildContext context) async {
+    final reasonController = TextEditingController();
+    final solutionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final result = await showDialog<(String, String)>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Masukan Perbaikan Kegiatan'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Dislike harus bersifat konstruktif. Jelaskan masalah dan solusi yang Anda sarankan.',
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: reasonController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Alasan tidak menyukai',
+                  ),
+                  validator: (value) => (value?.trim().length ?? 0) < 10
+                      ? 'Alasan minimal 10 karakter'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: solutionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Saran solusi/perbaikan',
+                  ),
+                  validator: (value) => (value?.trim().length ?? 0) < 10
+                      ? 'Solusi minimal 10 karakter'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(
+                dialogContext,
+                (reasonController.text.trim(), solutionController.text.trim()),
+              );
+            },
+            child: const Text('Kirim Masukan'),
+          ),
+        ],
+      ),
+    );
+    reasonController.dispose();
+    solutionController.dispose();
+    return result;
+  }
+
   Future<void> _showActivityDetail(BuildContext context, Activity item) async {
     final documentation = item.documentation.trim();
+    var isLiked = item.isLiked;
+    var likeCount = item.likeCount;
+    var likeBusy = false;
+    var isDisliked = item.isDisliked;
+    var dislikeCount = item.dislikeCount;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -525,7 +646,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        return DraggableScrollableSheet(
+        return StatefulBuilder(
+          builder: (context, setSheetState) => DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.86,
           minChildSize: 0.45,
@@ -580,7 +702,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                       ),
                       _buildInfoChip(
                         icon: Icons.star_rate_rounded,
-                        label: '${item.pointsGenerated} poin',
+                        label:
+                            '${item.pointsGenerated} poin untuk Ormawa setelah verifikasi',
                       ),
                     ],
                   ),
@@ -665,6 +788,123 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                      onPressed: likeBusy
+                          ? null
+                          : () async {
+                              setSheetState(() => likeBusy = true);
+                              try {
+                                await ref
+                                    .read(activityRepositoryProvider)
+                                    .setActivityLiked(item.id, !isLiked);
+                                if (!sheetContext.mounted) return;
+                                setSheetState(() {
+                                  isLiked = !isLiked;
+                                  likeCount += isLiked ? 1 : -1;
+                                  if (likeCount < 0) likeCount = 0;
+                                  if (isLiked && isDisliked) {
+                                    isDisliked = false;
+                                    if (dislikeCount > 0) dislikeCount--;
+                                  }
+                                });
+                                await ref
+                                    .read(activityControllerProvider.notifier)
+                                    .loadInitial();
+                                await refreshPointDependentWidgetState(ref);
+                              } catch (error) {
+                                if (!sheetContext.mounted) return;
+                                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Like kegiatan gagal: $error',
+                                    ),
+                                  ),
+                                );
+                              } finally {
+                                if (sheetContext.mounted) {
+                                  setSheetState(() => likeBusy = false);
+                                }
+                              }
+                            },
+                      icon: likeBusy
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              isLiked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                            ),
+                      label: Text(
+                        isLiked
+                            ? 'Disukai • $likeCount suka'
+                            : 'Sukai kegiatan • $likeCount suka',
+                      ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: likeBusy
+                              ? null
+                              : () async {
+                                  if (isDisliked) {
+                                    await ref
+                                        .read(activityRepositoryProvider)
+                                        .setActivityDisliked(
+                                          activityId: item.id,
+                                          disliked: false,
+                                        );
+                                    if (!sheetContext.mounted) return;
+                                    setSheetState(() {
+                                      isDisliked = false;
+                                      if (dislikeCount > 0) dislikeCount--;
+                                    });
+                                  } else {
+                                    final feedback = await _askDislikeFeedback(
+                                      sheetContext,
+                                    );
+                                    if (feedback == null ||
+                                        !sheetContext.mounted) {
+                                      return;
+                                    }
+                                    await ref
+                                        .read(activityRepositoryProvider)
+                                        .setActivityDisliked(
+                                          activityId: item.id,
+                                          disliked: true,
+                                          reason: feedback.$1,
+                                          solution: feedback.$2,
+                                        );
+                                    if (!sheetContext.mounted) return;
+                                    setSheetState(() {
+                                      isDisliked = true;
+                                      dislikeCount++;
+                                      if (isLiked) {
+                                        isLiked = false;
+                                        if (likeCount > 0) likeCount--;
+                                      }
+                                    });
+                                  }
+                                  await ref
+                                      .read(activityControllerProvider.notifier)
+                                      .loadInitial();
+                                },
+                          icon: Icon(
+                            isDisliked
+                                ? Icons.thumb_down_rounded
+                                : Icons.thumb_down_outlined,
+                          ),
+                          label: Text('$dislikeCount Masukan'),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
                   Text(
                     'Diskusi',
@@ -700,6 +940,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
               ),
             );
           },
+          ),
         );
       },
     );
@@ -1161,20 +1402,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    try {
-      await ref.read(dioProvider).post<Map<String, dynamic>>('/logout');
-      ref.read(dioProvider).options.headers.remove('Authorization');
-      await ref.read(authControllerProvider.notifier).logout();
-
-      if (!context.mounted) return;
-      context.go('/login');
-    } on DioException {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Logout gagal. Periksa koneksi API.')),
-      );
-    }
+    await ref.read(authControllerProvider.notifier).logout();
+    if (!context.mounted) return;
+    context.go('/login');
   }
 
   Widget _buildProfileAvatar(BuildContext context, MemberProfileData profile) {
@@ -1456,7 +1686,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   }
 
   List<String> _displayBadges(User user) {
-    return user.badges.isEmpty ? _badges : user.badges;
+    return user.badges;
   }
 
   Widget _buildBadgesSection(
@@ -1627,13 +1857,13 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     return MemberProfileData(
       fullName: user.name,
       nim: user.studentStaffId,
-      email: '${user.studentStaffId.toLowerCase()}@student.univ.ac.id',
-      phoneNumber: '0812-3456-7890',
-      faculty: 'Fakultas Teknik',
-      studyProgram: 'Teknik Informatika',
-      batchYear: '2022',
-      ormawa: 'BEM',
-      birthDate: DateTime(2003, 4, 17),
+      email: user.email,
+      phoneNumber: '',
+      faculty: '',
+      studyProgram: '',
+      batchYear: '',
+      ormawa: '',
+      birthDate: DateTime.now(),
     );
   }
 
@@ -1663,10 +1893,23 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
 
     if (!mounted || updatedProfile == null) return;
 
-    setState(() => _profileData = updatedProfile);
-    ref
-        .read(authControllerProvider.notifier)
-        .updateProfile(name: updatedProfile.fullName);
+    try {
+      await ref.read(authControllerProvider.notifier).updateProfile(
+        name: updatedProfile.fullName,
+        nim: updatedProfile.nim,
+        email: updatedProfile.email,
+      );
+      if (!mounted) return;
+      setState(() => _profileData = updatedProfile);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil berhasil disimpan ke database.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 }
 

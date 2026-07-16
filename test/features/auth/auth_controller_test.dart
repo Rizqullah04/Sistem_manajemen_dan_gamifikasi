@@ -51,6 +51,20 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> updateProfile({
+    required String name,
+    required String nim,
+    required String email,
+  }) async {
+    final user = _user;
+    if (user == null) {
+      throw const AppException('not authenticated');
+    }
+    _user = user.copyWith(name: name, studentStaffId: nim, email: email);
+    return _user!;
+  }
+
+  @override
   Future<void> logout() async {
     _token = null;
     _user = null;

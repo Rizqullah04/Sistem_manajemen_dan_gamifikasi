@@ -67,4 +67,9 @@ class Kegiatan extends Model
     {
         return $this->hasMany(LikeKegiatan::class, 'id_kegiatan', 'id_kegiatan');
     }
+
+    public function dislikeKegiatans(): HasMany
+    {
+        return $this->hasMany(DislikeKegiatan::class, 'id_kegiatan', 'id_kegiatan');
+    }
 }

@@ -16,6 +16,9 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class AuthController extends Controller
@@ -76,10 +79,32 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'exists:users,email'],
         ]);
 
-        return $this->successResponse('Email terdaftar. Gunakan OTP demo untuk reset password.', [
+        $otp = (string) random_int(100000, 999999);
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $data['email']],
+            ['token' => Hash::make($otp), 'created_at' => now()]
+        );
+        Mail::raw("Kode OTP reset password Anda: {$otp}. Kode berlaku selama 10 menit.", function ($message) use ($data): void {
+            $message->to($data['email'])->subject('OTP Reset Password');
+        });
+
+        return $this->successResponse('OTP reset password telah dikirim ke email Anda.', [
             'email' => $data['email'],
-            'otp' => '1234',
         ]);
+    }
+
+    public function verifyResetOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        if (! $this->otpValid($data['email'], $data['otp'])) {
+            return $this->errorResponse('OTP tidak valid atau sudah kedaluwarsa.', status: 422);
+        }
+
+        return $this->successResponse('OTP berhasil diverifikasi.');
     }
 
     public function resetPassword(Request $request): JsonResponse
@@ -90,7 +115,7 @@ class AuthController extends Controller
             'password_baru' => ['required', 'string', 'min:8'],
         ]);
 
-        if ($data['otp'] !== '1234') {
+        if (! $this->otpValid($data['email'], $data['otp'])) {
             return $this->errorResponse('OTP tidak valid.', [
                 'errors' => [
                     'otp' => ['OTP tidak valid.'],
@@ -104,13 +129,41 @@ class AuthController extends Controller
         ])->save();
 
         $user->tokens()->delete();
+        DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
 
         return $this->successResponse('Password berhasil diperbarui.');
+    }
+
+    private function otpValid(string $email, string $otp): bool
+    {
+        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        return $record !== null
+            && $record->created_at !== null
+            && now()->diffInMinutes($record->created_at) <= 10
+            && Hash::check($otp, $record->token);
     }
 
     public function profile(Request $request): JsonResponse
     {
         return $this->successResponse('Profile user berhasil diambil', new UserResource($request->user()->load(['ormawa', 'userBadges.badge'])));
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'nama' => ['sometimes', 'required', 'string', 'max:100'],
+            'nim' => ['sometimes', 'required', 'string', 'max:30', Rule::unique('users', 'nim')->ignore($user->id_user, 'id_user')],
+            'email' => ['sometimes', 'required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->id_user, 'id_user')],
+        ]);
+
+        $user->update($data);
+
+        return $this->successResponse(
+            'Profil berhasil diperbarui.',
+            new UserResource($user->fresh(['ormawa', 'userBadges.badge']))
+        );
     }
 
     public function gamificationProfile(Request $request): JsonResponse

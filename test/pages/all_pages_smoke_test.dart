@@ -69,6 +69,19 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> updateProfile({
+    required String name,
+    required String nim,
+    required String email,
+  }) async {
+    final user = _user;
+    if (user == null) {
+      throw StateError('No test user configured');
+    }
+    return user.copyWith(name: name, studentStaffId: nim, email: email);
+  }
+
+  @override
   Future<void> logout() async {}
 }
 
@@ -258,6 +271,7 @@ const _adminUser = User(
   id: 'u1',
   name: 'Admin Fakultas',
   studentStaffId: 'ADM001',
+  email: 'admin@example.com',
   role: UserRole.adminFaculty,
   points: 220,
   level: 2,
@@ -267,6 +281,7 @@ const _ormawaUser = User(
   id: 'u2',
   name: 'Himpunan Teknik Informatika',
   studentStaffId: 'ORM001',
+  email: 'ormawa@example.com',
   role: UserRole.ormawaAccount,
   points: 320,
   level: 3,
@@ -277,6 +292,7 @@ const _memberUser = User(
   id: 'u3',
   name: 'Andi Pratama',
   studentStaffId: '22103041069',
+  email: 'andi@example.com',
   role: UserRole.memberAccount,
   points: 96,
   level: 1,
@@ -695,7 +711,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Lengkapi Profil'), findsOneWidget);
-      expect(find.text('Unggah foto dari galeri'), findsOneWidget);
+      expect(find.text('Identitas Utama'), findsOneWidget);
+      expect(find.text('Nama Lengkap'), findsOneWidget);
+      expect(find.text('NIM'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
       expect(find.text('Simpan Perubahan'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
