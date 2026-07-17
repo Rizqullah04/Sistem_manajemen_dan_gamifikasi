@@ -368,7 +368,16 @@ class OrmawaAwardController extends Controller
         $entry['total_score'] = $averageScore;
         $entry['predicate'] = $this->predicate($averageScore);
         $entry['metrics']['system_activity_score'] = $activityScore;
-        $entry['metrics']['system_activity_basis'] = 'Dihitung dari total poin aktivitas Ormawa dibandingkan capaian tertinggi pada periode yang sama.';
+        $activityRatio = $max['points'] > 0
+            ? ($metrics['points'] / $max['points']) * 100
+            : 0;
+        $entry['metrics']['system_activity_basis'] = sprintf(
+            '%d poin / %d poin tertinggi = %.1f%%, sehingga nilai keaktifan %d/5.',
+            $metrics['points'],
+            $max['points'],
+            $activityRatio,
+            $activityScore,
+        );
 
         return $entry;
     }

@@ -212,6 +212,7 @@ class _FakeDashboardRepository implements DashboardRepository {
       points: 320,
       ranking: 1,
       level: 3,
+      organizationName: 'HMJTI',
     ),
     LeaderboardEntry(
       id: 'u4',
@@ -219,6 +220,7 @@ class _FakeDashboardRepository implements DashboardRepository {
       points: 280,
       ranking: 2,
       level: 2,
+      organizationName: 'BEM Fakultas Teknik',
     ),
   ];
 
@@ -666,6 +668,7 @@ void main() {
       expect(find.text('Individu'), findsOneWidget);
       expect(find.text('Ormawa'), findsOneWidget);
       expect(find.text('Top Individu'), findsOneWidget);
+      expect(find.text('HMJTI'), findsWidgets);
       expect(find.textContaining('PTS'), findsWidgets);
       expect(find.text('Ranking Saya'), findsNothing);
       expect(tester.takeException(), isNull);

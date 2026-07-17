@@ -87,7 +87,7 @@ UserModel _toUserModel(LeaderboardEntry entry) {
     avatar: '',
     points: entry.points,
     rank: entry.ranking,
-    ormawa: '',
+    ormawa: entry.organizationName,
     isVerified: true,
     isActive: true,
     isTopContributor: entry.ranking == 1,

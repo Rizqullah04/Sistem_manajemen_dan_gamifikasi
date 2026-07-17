@@ -7,6 +7,7 @@ use App\Http\Requests\Kegiatan\StoreKegiatanRequest;
 use App\Http\Requests\Kegiatan\UpdateKegiatanRequest;
 use App\Http\Requests\Kegiatan\VerifikasiKegiatanRequest;
 use App\Http\Resources\KegiatanResource;
+use App\Models\ActivityType;
 use App\Models\Kegiatan;
 use App\Models\Ormawa;
 use App\Models\Verifikasi;
@@ -48,6 +49,7 @@ class KegiatanController extends Controller
         }
 
         $data['status'] = Kegiatan::STATUS_PENDING;
+        $data['poin_kegiatan'] = 0;
 
         $kegiatan = Kegiatan::create($data)->load(['ormawa', 'kategori', 'votings', 'verifikasis.admin'])->loadCount('likeKegiatans');
 
@@ -73,6 +75,9 @@ class KegiatanController extends Controller
         }
 
         $data = $request->validated();
+        // Nilai poin kegiatan ditentukan oleh aturan gamifikasi saat diverifikasi,
+        // bukan oleh payload dari admin ormawa.
+        $data['poin_kegiatan'] = 0;
 
         if (isset($data['id_ormawa']) && ! $this->userDapatMengaksesOrmawa($request, (int) $data['id_ormawa'])) {
             return $this->errorResponse('Anda tidak memiliki akses ke ormawa tujuan.', status: 403);
@@ -136,6 +141,23 @@ class KegiatanController extends Controller
 
             if ($statusLama === Kegiatan::STATUS_VALID && $data['status'] !== Kegiatan::STATUS_VALID) {
                 $poinService->batalkanPoinOrmawa($lockedKegiatan->ormawa, 'kegiatan', $lockedKegiatan->id_kegiatan);
+            } elseif ($statusLama !== Kegiatan::STATUS_VALID && $data['status'] === Kegiatan::STATUS_VALID) {
+                $aturanPoin = ActivityType::query()
+                    ->where('code', 'VERIFIED_ACTIVITY')
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($aturanPoin && $aturanPoin->point_value > 0) {
+                    $poinService->tambahPoinOrmawa(
+                        $lockedKegiatan->ormawa,
+                        'kegiatan',
+                        $lockedKegiatan->id_kegiatan,
+                        (int) $aturanPoin->point_value,
+                        'Kegiatan diverifikasi oleh DPM FT',
+                    );
+                } else {
+                    $lockedKegiatan->ormawa->recalculateTotalPoin();
+                }
             } else {
                 $lockedKegiatan->ormawa->recalculateTotalPoin();
             }

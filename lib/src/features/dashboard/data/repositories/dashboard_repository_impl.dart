@@ -134,9 +134,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
       id: json['id_user']?.toString() ?? json['id_ormawa']?.toString() ?? '',
       name: json['nama']?.toString() ?? '-',
       points: points,
-      ranking: int.tryParse(json['ranking']?.toString() ?? '0') ?? 0,
-      level: levelFromPoints(points),
-    );
+        ranking: int.tryParse(json['ranking']?.toString() ?? '0') ?? 0,
+        level: levelFromPoints(points),
+        organizationName: json['id_user'] == null
+            ? ''
+            : json['nama_ormawa']?.toString() ??
+                  'Belum terafiliasi Ormawa',
+      );
   }
 
   Map<int, int> _monthlyActivityChart(List<Map<String, dynamic>> activities) {

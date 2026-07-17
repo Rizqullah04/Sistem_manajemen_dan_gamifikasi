@@ -541,6 +541,13 @@ class _RubricInfo extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 6),
+          Text(
+            'Keaktifan otomatis: 5 jika capaian poin ≥80% dari poin tertinggi pada periode yang sama; 4 jika ≥60%; 3 jika ≥40%; 2 jika ≥20%; dan 1 jika di bawah 20% atau belum memiliki poin.',
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: () => _showRubricIndicators(context),
@@ -675,7 +682,7 @@ class _AwardsTable extends StatelessWidget {
             DataColumn(label: Text('Disiplin')),
             DataColumn(label: Text('Kompak')),
             DataColumn(label: Text('Komunikasi')),
-            DataColumn(label: Text('Keaktifan')),
+            DataColumn(label: Text('Keaktifan\n(otomatis)')),
             DataColumn(label: Text('ProKer')),
             DataColumn(label: Text('Rata-rata')),
             DataColumn(label: Text('Predikat')),
@@ -720,10 +727,34 @@ class _AwardsTable extends StatelessWidget {
                 ),
                 DataCell(
                   Tooltip(
-                    message: entry.metrics.systemActivityBasis,
-                    child: Chip(
-                      label: Text('${entry.metrics.systemActivityScore}'),
-                      avatar: const Icon(Icons.auto_graph_outlined, size: 16),
+                    message:
+                        '${entry.metrics.systemActivityBasis} Ketuk untuk melihat detail.',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _showActivityCalculation(context, entry),
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 72),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .secondaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${entry.metrics.systemActivityScore} / 5',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSecondaryContainer,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -769,6 +800,29 @@ class _AwardsTable extends StatelessWidget {
       ),
     );
   }
+
+  void _showActivityCalculation(
+    BuildContext context,
+    OrmawaAwardEntry entry,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Keaktifan ${entry.name}'),
+        content: Text(
+          '${entry.metrics.systemActivityBasis}\n\n'
+          'Batas nilai: 5 = ≥80%, 4 = ≥60%, 3 = ≥40%, '
+          '2 = ≥20%, dan 1 = <20%.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ScoreSelect extends StatelessWidget {
@@ -784,24 +838,29 @@ class _ScoreSelect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 180,
-      child: DropdownButtonFormField<int>(
-        initialValue: value,
-        isDense: true,
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return Tooltip(
+      message: value == null
+          ? 'Pilih nilai berdasarkan indikator rubrik'
+          : _rubricIndicator(criterion, value!),
+      child: SizedBox(
+        width: 88,
+        child: DropdownButtonFormField<int>(
+          initialValue: value,
+          isDense: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          ),
+          items: const [1, 2, 3, 4, 5]
+              .map(
+                (score) => DropdownMenuItem<int>(
+                  value: score,
+                  child: Text('$score'),
+                ),
+              )
+              .toList(),
+          onChanged: onChanged,
         ),
-        items: const [1, 2, 3, 4, 5]
-            .map(
-              (score) => DropdownMenuItem<int>(
-                value: score,
-                child: Text('$score — ${_rubricIndicator(criterion, score)}'),
-              ),
-            )
-            .toList(),
-        onChanged: onChanged,
       ),
     );
   }

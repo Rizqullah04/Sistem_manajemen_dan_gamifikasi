@@ -38,6 +38,15 @@ class ActivityTypeSeeder extends Seeder
                 'is_active' => true,
             ],
             [
+                'code' => 'VERIFIED_ACTIVITY',
+                'name' => 'Kegiatan Terverifikasi',
+                'frequency_level' => 'medium',
+                'difficulty_level' => 'medium',
+                'organizational_impact' => 'medium',
+                'point_value' => 10,
+                'is_active' => true,
+            ],
+            [
                 'code' => 'JOIN_EVENT',
                 'name' => 'Join Event',
                 'frequency_level' => 'medium',

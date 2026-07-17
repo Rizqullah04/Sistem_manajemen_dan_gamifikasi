@@ -274,7 +274,7 @@ class AdminSidebar extends ConsumerWidget {
             _buildSubMenuItem(
               context,
               icon: Icons.data_exploration_outlined,
-              label: 'Penilaian & Audit Poin',
+              label: 'Audit Gamifikasi',
               selected: currentPath == '/admin/data-management',
               onTap: () =>
                   _closeDrawerAndPush(context, '/admin/data-management'),

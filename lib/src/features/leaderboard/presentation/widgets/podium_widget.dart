@@ -180,6 +180,19 @@ class _PodiumItem extends StatelessWidget {
                     fontSize: isCenter ? 14 : 12,
                   ),
                 ),
+                if (entry.ormawa.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    entry.ormawa,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
                 SizedBox(height: spacing * 0.5),
                 Text(
                   '${_formatPoints(entry.points)} PTS',

@@ -13,7 +13,6 @@ use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LikeKegiatanController;
 use App\Http\Controllers\Api\OrmawaController;
 use App\Http\Controllers\Api\OrmawaAwardController;
-use App\Http\Controllers\Api\PenilaianController;
 use App\Http\Controllers\Api\PeriodController;
 use App\Http\Controllers\Api\PoinLogController;
 use App\Http\Controllers\Api\UserController;
@@ -64,7 +63,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('badges', BadgeController::class);
         Route::apiResource('activity-types', ActivityTypeController::class);
         Route::apiResource('kategori-kegiatans', KategoriKegiatanController::class)->except(['index', 'show']);
-        Route::apiResource('penilaians', PenilaianController::class);
         Route::get('/poin-logs', [PoinLogController::class, 'index']);
         Route::patch('/ormawas/{ormawa}/recalculate-poin', [PoinLogController::class, 'recalculateOrmawa']);
         Route::patch('/kegiatans/{kegiatan}/verifikasi', [KegiatanController::class, 'verifikasi']);

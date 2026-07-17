@@ -58,7 +58,9 @@ class UserHighlightCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Top $topPercent%',
+                  currentEntry.ormawa.isEmpty
+                      ? 'Top $topPercent%'
+                      : '${currentEntry.ormawa} • Top $topPercent%',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,

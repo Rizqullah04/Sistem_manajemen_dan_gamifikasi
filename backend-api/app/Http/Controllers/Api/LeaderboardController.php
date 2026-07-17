@@ -22,7 +22,8 @@ class LeaderboardController extends Controller
         $periode = $request->query('periode', 'all_time');
 
         if ($tipe === 'individu') {
-            $users = User::where('role', 'anggota')
+            $users = User::with('ormawa')
+                ->where('role', 'anggota')
                 ->orderByDesc('poin')
                 ->orderBy('nama')
                 ->get()

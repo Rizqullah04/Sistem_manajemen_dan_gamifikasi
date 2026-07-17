@@ -5,6 +5,7 @@ class LeaderboardEntry {
     required this.points,
     required this.ranking,
     required this.level,
+    this.organizationName = '',
   });
 
   final String id;
@@ -12,4 +13,5 @@ class LeaderboardEntry {
   final int points;
   final int ranking;
   final int level;
+  final String organizationName;
 }
