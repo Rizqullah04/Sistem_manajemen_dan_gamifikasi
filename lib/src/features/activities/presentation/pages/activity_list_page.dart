@@ -7,6 +7,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dar
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/providers/activity_controller.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/widgets/activity_dislike_feedback_dialog.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/presentation/widgets/discussion_section.dart';
@@ -747,63 +748,14 @@ class _ActivityCard extends ConsumerWidget {
     String? reason;
     String? solution;
     if (!activity.isDisliked) {
-      final reasonController = TextEditingController();
-      final solutionController = TextEditingController();
-      final formKey = GlobalKey<FormState>();
-      final result = await showDialog<(String, String)>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Masukan Perbaikan'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: reasonController,
-                  decoration: const InputDecoration(labelText: 'Alasan'),
-                  minLines: 2,
-                  maxLines: 3,
-                  validator: (value) => (value?.trim().length ?? 0) < 10
-                      ? 'Alasan minimal 10 karakter'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: solutionController,
-                  decoration: const InputDecoration(labelText: 'Saran solusi'),
-                  minLines: 2,
-                  maxLines: 3,
-                  validator: (value) => (value?.trim().length ?? 0) < 10
-                      ? 'Solusi minimal 10 karakter'
-                      : null,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.pop(
-                  dialogContext,
-                  (reasonController.text.trim(), solutionController.text.trim()),
-                );
-              },
-              child: const Text('Kirim'),
-            ),
-          ],
-        ),
+      final result = await showActivityDislikeFeedbackDialog(
+        context,
+        title: 'Masukan Perbaikan',
       );
-      reasonController.dispose();
-      solutionController.dispose();
       if (result == null) return;
-      reason = result.$1;
-      solution = result.$2;
+      if (!context.mounted) return;
+      reason = result.reason;
+      solution = result.solution;
     }
 
     await ref.read(activityRepositoryProvider).setActivityDisliked(
@@ -812,6 +764,7 @@ class _ActivityCard extends ConsumerWidget {
           reason: reason,
           solution: solution,
         );
+    if (!context.mounted) return;
     await ref.read(activityControllerProvider.notifier).loadInitial();
   }
 

@@ -14,6 +14,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/point_card.da
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/providers/activity_controller.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/widgets/activity_dislike_feedback_dialog.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
@@ -628,6 +629,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
       } else {
         final feedback = await _askDislikeFeedback(context);
         if (feedback == null) return;
+        if (!mounted) return;
         await ref.read(activityRepositoryProvider).setActivityDisliked(
               activityId: item.id,
               disliked: true,
@@ -647,71 +649,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
   }
 
   Future<(String, String)?> _askDislikeFeedback(BuildContext context) async {
-    final reasonController = TextEditingController();
-    final solutionController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final result = await showDialog<(String, String)>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Masukan Perbaikan Kegiatan'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Dislike harus bersifat konstruktif. Jelaskan masalah dan solusi yang Anda sarankan.',
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: reasonController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Alasan tidak menyukai',
-                  ),
-                  validator: (value) => (value?.trim().length ?? 0) < 10
-                      ? 'Alasan minimal 10 karakter'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: solutionController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Saran solusi/perbaikan',
-                  ),
-                  validator: (value) => (value?.trim().length ?? 0) < 10
-                      ? 'Solusi minimal 10 karakter'
-                      : null,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.pop(
-                dialogContext,
-                (reasonController.text.trim(), solutionController.text.trim()),
-              );
-            },
-            child: const Text('Kirim Masukan'),
-          ),
-        ],
-      ),
-    );
-    reasonController.dispose();
-    solutionController.dispose();
-    return result;
+    final result = await showActivityDislikeFeedbackDialog(context);
+    if (result == null) return null;
+    return (result.reason, result.solution);
   }
 
   Future<void> _showActivityDetail(BuildContext context, Activity item) async {
