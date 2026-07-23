@@ -92,7 +92,7 @@ return new class extends Migration
             $table->id('id_poin_log');
             $table->foreignId('id_user')->nullable()->constrained('users', 'id_user')->cascadeOnDelete();
             $table->foreignId('id_ormawa')->nullable()->constrained('ormawas', 'id_ormawa')->cascadeOnDelete();
-            $table->enum('sumber', ['kegiatan', 'komentar', 'balasan', 'voting', 'like']);
+            $table->enum('sumber', ['kegiatan', 'komentar', 'balasan', 'voting', 'like', 'dislike']);
             $table->unsignedBigInteger('referensi_id');
             $table->integer('poin');
             $table->text('keterangan')->nullable();

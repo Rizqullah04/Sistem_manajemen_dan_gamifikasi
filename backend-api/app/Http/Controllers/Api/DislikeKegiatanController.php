@@ -62,24 +62,57 @@ class DislikeKegiatanController extends Controller
                 $like->delete();
             }
 
-            return DislikeKegiatan::updateOrCreate([
+            $dislike = DislikeKegiatan::updateOrCreate([
                 'id_kegiatan' => $data['id_kegiatan'],
                 'id_user' => $request->user()->id_user,
             ], [
                 'alasan' => $data['alasan'],
                 'solusi' => $data['solusi'],
             ]);
+
+            $poinService->tambahPoinUser(
+                $request->user(),
+                'dislike',
+                $dislike->id_dislike,
+                1,
+                'Memberikan masukan perbaikan kegiatan'
+            );
+
+            return $dislike;
         });
 
-        return $this->successResponse('Masukan perbaikan berhasil disimpan.', $dislike, 201);
+        return $this->successResponse(
+            'Masukan perbaikan berhasil disimpan dan 1 poin diberikan.',
+            $dislike,
+            201
+        );
     }
 
-    public function destroy(Request $request, Kegiatan $kegiatan): JsonResponse
+    public function destroy(
+        Request $request,
+        Kegiatan $kegiatan,
+        PoinService $poinService
+    ): JsonResponse
     {
-        DislikeKegiatan::where('id_kegiatan', $kegiatan->id_kegiatan)
+        $dislike = DislikeKegiatan::where('id_kegiatan', $kegiatan->id_kegiatan)
             ->where('id_user', $request->user()->id_user)
-            ->delete();
+            ->first();
 
-        return $this->successResponse('Dislike kegiatan berhasil dibatalkan.');
+        if ($dislike === null) {
+            return $this->successResponse('Masukan perbaikan sudah tidak aktif.');
+        }
+
+        DB::transaction(function () use ($request, $dislike, $poinService): void {
+            $poinService->batalkanPoinUser(
+                $request->user(),
+                'dislike',
+                $dislike->id_dislike
+            );
+            $dislike->delete();
+        });
+
+        return $this->successResponse(
+            'Masukan perbaikan dibatalkan dan 1 poin dicabut.'
+        );
     }
 }

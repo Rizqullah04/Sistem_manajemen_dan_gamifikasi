@@ -29,9 +29,18 @@ class LikeKegiatanController extends Controller
             'tanggal' => now(),
         ]);
 
-        DislikeKegiatan::where('id_kegiatan', $data['id_kegiatan'])
+        $dislike = DislikeKegiatan::where('id_kegiatan', $data['id_kegiatan'])
             ->where('id_user', $request->user()->id_user)
-            ->delete();
+            ->first();
+
+        if ($dislike !== null) {
+            $poinService->batalkanPoinUser(
+                $request->user(),
+                'dislike',
+                $dislike->id_dislike
+            );
+            $dislike->delete();
+        }
 
         if ($like->wasRecentlyCreated && $request->user()->role === 'anggota') {
             $poinService->tambahPoinUser($request->user(), 'like', $like->id_like, 1, 'Memberi like kegiatan');
