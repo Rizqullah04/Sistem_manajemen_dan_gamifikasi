@@ -235,9 +235,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                         child: Text(
                           'Belum ada kegiatan terbaru',
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       )
@@ -336,7 +336,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                             'Notifikasi Terbaru',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                   fontWeight: FontWeight.w800,
                                 ),
                           ),
@@ -356,9 +358,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                           child: Text(
                             'Tidak ada notifikasi baru.',
                             style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -383,7 +385,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                               title: Text(
                                 notifications[index],
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                             );
@@ -436,7 +440,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 children: [
                   CircleAvatar(
                     radius: 15,
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
                     child: Icon(
                       Icons.groups_2_outlined,
                       size: 16,
@@ -452,9 +458,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -478,12 +484,60 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                 item.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (item.documentationPhotos.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        item.documentationPhotos.first,
+                        width: double.infinity,
+                        height: 170,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: double.infinity,
+                          height: 170,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (item.documentationPhotos.length > 1)
+                      Positioned(
+                        right: 10,
+                        bottom: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.72),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '+${item.documentationPhotos.length - 1} foto',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               Wrap(
                 spacing: 10,
@@ -547,9 +601,14 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                     onPressed: () => _showActivityDetail(context, item),
                     style: TextButton.styleFrom(
                       minimumSize: const Size(44, 44),
-                      foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                      foregroundColor: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant,
                     ),
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 18,
+                    ),
                     label: Text('${item.commentCount} Komentar'),
                   ),
                 ],
@@ -565,9 +624,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                       Text(
                         'Lihat detail kegiatan',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const Spacer(),
                       Icon(
@@ -613,24 +672,25 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
       await ref.read(authControllerProvider.notifier).refreshProfile();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Like kegiatan gagal: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Like kegiatan gagal: $error')));
     }
   }
 
   Future<void> _handleActivityDislike(Activity item) async {
     try {
       if (item.isDisliked) {
-        await ref.read(activityRepositoryProvider).setActivityDisliked(
-              activityId: item.id,
-              disliked: false,
-            );
+        await ref
+            .read(activityRepositoryProvider)
+            .setActivityDisliked(activityId: item.id, disliked: false);
       } else {
         final feedback = await _askDislikeFeedback(context);
         if (feedback == null) return;
         if (!mounted) return;
-        await ref.read(activityRepositoryProvider).setActivityDisliked(
+        await ref
+            .read(activityRepositoryProvider)
+            .setActivityDisliked(
               activityId: item.id,
               disliked: true,
               reason: feedback.$1,
@@ -642,9 +702,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
       await ref.read(authControllerProvider.notifier).refreshProfile();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Masukan kegiatan gagal: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Masukan kegiatan gagal: $error')));
     }
   }
 
@@ -656,11 +716,13 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
 
   Future<void> _showActivityDetail(BuildContext context, Activity item) async {
     final documentation = item.documentation.trim();
+    final photos = item.documentationPhotos;
     var isLiked = item.isLiked;
     var likeCount = item.likeCount;
     var likeBusy = false;
     var isDisliked = item.isDisliked;
     var dislikeCount = item.dislikeCount;
+    var currentPhotoIndex = 0;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -672,301 +734,422 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) => DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.86,
-          minChildSize: 0.45,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) {
-            return SingleChildScrollView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
+            expand: false,
+            initialChildSize: 0.86,
+            minChildSize: 0.45,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return SingleChildScrollView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(999),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      _buildStatusBadge(item.status),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildInfoChip(
-                        icon: Icons.calendar_month,
-                        label: DateFormat('dd MMM yyyy').format(item.date),
-                      ),
-                      _buildInfoChip(
-                        icon: Icons.category_outlined,
-                        label: item.category,
-                      ),
-                      _buildInfoChip(
-                        icon: Icons.star_rate_rounded,
-                        label:
-                            'Kegiatan telah diverifikasi oleh admin DPM',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'Deskripsi',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item.description,
-                    style: const TextStyle(color: Colors.white70, height: 1.45),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'Dokumentasi',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF17122D),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: documentation.isEmpty
-                        ? const Text(
-                            'Dokumentasi belum tersedia.',
-                            style: TextStyle(color: Colors.white54),
-                          )
-                        : Row(
-                            children: [
-                              const Icon(
-                                Icons.link_rounded,
-                                color: Colors.white70,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  documentation,
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Salin dokumentasi',
-                                onPressed: () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: documentation),
-                                  );
-                                  if (!sheetContext.mounted) return;
-                                  ScaffoldMessenger.of(
-                                    sheetContext,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Link dokumentasi disalin.',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.copy_rounded),
-                                color: Colors.white,
-                              ),
-                            ],
-                          ),
-                  ),
-                  if (item.verificationNote != null) ...[
                     const SizedBox(height: 18),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildStatusBadge(item.status),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildInfoChip(
+                          icon: Icons.calendar_month,
+                          label: DateFormat('dd MMM yyyy').format(item.date),
+                        ),
+                        _buildInfoChip(
+                          icon: Icons.category_outlined,
+                          label: item.category,
+                        ),
+                        _buildInfoChip(
+                          icon: Icons.star_rate_rounded,
+                          label:
+                              item.organizerName.toUpperCase().startsWith('DPM')
+                              ? 'Dipublikasikan langsung oleh DPM'
+                              : 'Kegiatan telah diverifikasi oleh admin DPM',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
                     Text(
-                      'Catatan Verifikasi: ${item.verificationNote!}',
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontStyle: FontStyle.italic,
+                      'Deskripsi',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                      onPressed: likeBusy
-                          ? null
-                          : () async {
-                              setSheetState(() => likeBusy = true);
-                              try {
-                                await ref
-                                    .read(activityRepositoryProvider)
-                                    .setActivityLiked(item.id, !isLiked);
-                                if (!sheetContext.mounted) return;
-                                setSheetState(() {
-                                  isLiked = !isLiked;
-                                  likeCount += isLiked ? 1 : -1;
-                                  if (likeCount < 0) likeCount = 0;
-                                  if (isLiked && isDisliked) {
-                                    isDisliked = false;
-                                    if (dislikeCount > 0) dislikeCount--;
-                                  }
-                                });
-                                await ref
-                                    .read(activityControllerProvider.notifier)
-                                    .loadInitial();
-                                if (!sheetContext.mounted) return;
-                                await ref
-                                    .read(authControllerProvider.notifier)
-                                    .refreshProfile();
-                              } catch (error) {
-                                if (!sheetContext.mounted) return;
-                                ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Like kegiatan gagal: $error',
+                    const SizedBox(height: 8),
+                    Text(
+                      item.description,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      'Dokumentasi',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (photos.isNotEmpty) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: SizedBox(
+                          height: 230,
+                          child: PageView.builder(
+                            itemCount: photos.length,
+                            onPageChanged: (index) {
+                              setSheetState(() => currentPhotoIndex = index);
+                            },
+                            itemBuilder: (context, index) {
+                              return InkWell(
+                                onTap: () => _showDocumentationPhoto(
+                                  sheetContext,
+                                  photos[index],
+                                ),
+                                child: Image.network(
+                                  photos[index],
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFF17122D),
+                                    alignment: Alignment.center,
+                                    child: const Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.broken_image_outlined,
+                                          color: Colors.white54,
+                                          size: 40,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Foto gagal dimuat',
+                                          style: TextStyle(
+                                            color: Colors.white54,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                );
-                              } finally {
-                                if (sheetContext.mounted) {
-                                  setSheetState(() => likeBusy = false);
-                                }
-                              }
+                                ),
+                              );
                             },
-                      icon: likeBusy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              isLiked
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                            ),
-                      label: Text(
-                        isLiked
-                            ? 'Disukai • $likeCount suka'
-                            : 'Sukai kegiatan • $likeCount suka',
-                      ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: likeBusy
-                              ? null
-                              : () async {
-                                  if (isDisliked) {
-                                    await ref
-                                        .read(activityRepositoryProvider)
-                                        .setActivityDisliked(
-                                          activityId: item.id,
-                                          disliked: false,
-                                        );
-                                    if (!sheetContext.mounted) return;
-                                    setSheetState(() {
-                                      isDisliked = false;
-                                      if (dislikeCount > 0) dislikeCount--;
-                                    });
-                                  } else {
-                                    final feedback = await _askDislikeFeedback(
-                                      sheetContext,
-                                    );
-                                    if (feedback == null ||
-                                        !sheetContext.mounted) {
-                                      return;
-                                    }
-                                    await ref
-                                        .read(activityRepositoryProvider)
-                                        .setActivityDisliked(
-                                          activityId: item.id,
-                                          disliked: true,
-                                          reason: feedback.$1,
-                                          solution: feedback.$2,
-                                        );
-                                    if (!sheetContext.mounted) return;
-                                    setSheetState(() {
-                                      isDisliked = true;
-                                      dislikeCount++;
-                                      if (isLiked) {
-                                        isLiked = false;
-                                        if (likeCount > 0) likeCount--;
-                                      }
-                                    });
-                                  }
-                                  await ref
-                                      .read(activityControllerProvider.notifier)
-                                      .loadInitial();
-                                },
-                          icon: Icon(
-                            isDisliked
-                                ? Icons.thumb_down_rounded
-                                : Icons.thumb_down_outlined,
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Text(
+                          '${currentPhotoIndex + 1} / ${photos.length}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700,
                           ),
-                          label: Text('$dislikeCount Masukan'),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Diskusi',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      textTheme: Theme.of(context).textTheme.apply(
-                        bodyColor: Colors.white,
-                        displayColor: Colors.white,
-                      ),
-                      inputDecorationTheme: const InputDecorationTheme(
-                        filled: true,
-                        fillColor: Color(0xFF17122D),
-                        hintStyle: TextStyle(color: Colors.white54),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(16)),
-                          borderSide: BorderSide(color: Colors.white10),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(16)),
-                          borderSide: BorderSide(color: Colors.white10),
+                    if (documentation.isNotEmpty) ...[
+                      if (photos.isNotEmpty) const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: documentation),
+                            );
+                            if (!sheetContext.mounted) return;
+                            ScaffoldMessenger.of(sheetContext).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Tautan dokumentasi lengkap disalin.',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.open_in_new_rounded),
+                          label: const Text('Dokumentasi Lengkap'),
                         ),
                       ),
+                    ],
+                    if (photos.isEmpty && documentation.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF17122D),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.photo_library_outlined,
+                              color: Colors.white54,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Dokumentasi belum tersedia.',
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (item.verificationNote != null) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        'Catatan Verifikasi: ${item.verificationNote!}',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            onPressed: likeBusy
+                                ? null
+                                : () async {
+                                    setSheetState(() => likeBusy = true);
+                                    try {
+                                      await ref
+                                          .read(activityRepositoryProvider)
+                                          .setActivityLiked(item.id, !isLiked);
+                                      if (!sheetContext.mounted) return;
+                                      setSheetState(() {
+                                        isLiked = !isLiked;
+                                        likeCount += isLiked ? 1 : -1;
+                                        if (likeCount < 0) likeCount = 0;
+                                        if (isLiked && isDisliked) {
+                                          isDisliked = false;
+                                          if (dislikeCount > 0) dislikeCount--;
+                                        }
+                                      });
+                                      await ref
+                                          .read(
+                                            activityControllerProvider.notifier,
+                                          )
+                                          .loadInitial();
+                                      if (!sheetContext.mounted) return;
+                                      await ref
+                                          .read(authControllerProvider.notifier)
+                                          .refreshProfile();
+                                    } catch (error) {
+                                      if (!sheetContext.mounted) return;
+                                      ScaffoldMessenger.of(
+                                        sheetContext,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Like kegiatan gagal: $error',
+                                          ),
+                                        ),
+                                      );
+                                    } finally {
+                                      if (sheetContext.mounted) {
+                                        setSheetState(() => likeBusy = false);
+                                      }
+                                    }
+                                  },
+                            icon: likeBusy
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    isLiked
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                  ),
+                            label: Text(
+                              isLiked
+                                  ? 'Disukai • $likeCount suka'
+                                  : 'Sukai kegiatan • $likeCount suka',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: likeBusy
+                                ? null
+                                : () async {
+                                    if (isDisliked) {
+                                      await ref
+                                          .read(activityRepositoryProvider)
+                                          .setActivityDisliked(
+                                            activityId: item.id,
+                                            disliked: false,
+                                          );
+                                      if (!sheetContext.mounted) return;
+                                      setSheetState(() {
+                                        isDisliked = false;
+                                        if (dislikeCount > 0) dislikeCount--;
+                                      });
+                                    } else {
+                                      final feedback =
+                                          await _askDislikeFeedback(
+                                            sheetContext,
+                                          );
+                                      if (feedback == null ||
+                                          !sheetContext.mounted) {
+                                        return;
+                                      }
+                                      await ref
+                                          .read(activityRepositoryProvider)
+                                          .setActivityDisliked(
+                                            activityId: item.id,
+                                            disliked: true,
+                                            reason: feedback.$1,
+                                            solution: feedback.$2,
+                                          );
+                                      if (!sheetContext.mounted) return;
+                                      setSheetState(() {
+                                        isDisliked = true;
+                                        dislikeCount++;
+                                        if (isLiked) {
+                                          isLiked = false;
+                                          if (likeCount > 0) likeCount--;
+                                        }
+                                      });
+                                    }
+                                    await ref
+                                        .read(
+                                          activityControllerProvider.notifier,
+                                        )
+                                        .loadInitial();
+                                  },
+                            icon: Icon(
+                              isDisliked
+                                  ? Icons.thumb_down_rounded
+                                  : Icons.thumb_down_outlined,
+                            ),
+                            label: Text('$dislikeCount Masukan'),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: DiscussionSection(activityId: item.id),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Diskusi',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        textTheme: Theme.of(context).textTheme.apply(
+                          bodyColor: Colors.white,
+                          displayColor: Colors.white,
+                        ),
+                        inputDecorationTheme: const InputDecorationTheme(
+                          filled: true,
+                          fillColor: Color(0xFF17122D),
+                          hintStyle: TextStyle(color: Colors.white54),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            borderSide: BorderSide(color: Colors.white10),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            borderSide: BorderSide(color: Colors.white10),
+                          ),
+                        ),
+                      ),
+                      child: DiscussionSection(activityId: item.id),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showDocumentationPhoto(BuildContext context, String photoUrl) {
+    return showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.92),
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4,
+                    child: Image.network(
+                      photoUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.broken_image_outlined,
+                            color: Colors.white54,
+                            size: 52,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'Foto tidak dapat dimuat.',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ],
-              ),
-            );
-          },
+                ),
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: IconButton.filled(
+                    tooltip: 'Tutup',
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1921,11 +2104,13 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
     if (!mounted || updatedProfile == null) return;
 
     try {
-      await ref.read(authControllerProvider.notifier).updateProfile(
-        name: updatedProfile.fullName,
-        nim: updatedProfile.nim,
-        email: updatedProfile.email,
-      );
+      await ref
+          .read(authControllerProvider.notifier)
+          .updateProfile(
+            name: updatedProfile.fullName,
+            nim: updatedProfile.nim,
+            email: updatedProfile.email,
+          );
       if (!mounted) return;
       setState(() => _profileData = updatedProfile);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1933,9 +2118,9 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 }
