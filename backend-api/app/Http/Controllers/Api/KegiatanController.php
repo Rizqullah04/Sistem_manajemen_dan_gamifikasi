@@ -70,7 +70,15 @@ class KegiatanController extends Controller
             : Kegiatan::STATUS_PENDING;
         $data['poin_kegiatan'] = 0;
 
-        $kegiatan = Kegiatan::create($data)->load(['ormawa', 'kategori', 'votings', 'verifikasis.admin'])->loadCount('likeKegiatans');
+        $kegiatan = Kegiatan::create($data)
+            ->load([
+                'ormawa',
+                'kategori',
+                'votings',
+                'verifikasis.admin',
+                'dokumentasiKegiatans',
+            ])
+            ->loadCount(['likeKegiatans', 'dislikeKegiatans', 'diskusis']);
 
         $message = $request->user()->role === 'admin'
             ? 'Kegiatan DPM berhasil dipublikasikan tanpa poin organisasi.'
@@ -122,7 +130,21 @@ class KegiatanController extends Controller
 
         return $this->successResponse(
             'Kegiatan berhasil diperbarui',
-            new KegiatanResource($kegiatan->fresh(['ormawa', 'votings', 'verifikasis.admin'])->loadCount('likeKegiatans'))
+            new KegiatanResource(
+                $kegiatan
+                    ->fresh([
+                        'ormawa',
+                        'kategori',
+                        'votings',
+                        'verifikasis.admin',
+                        'dokumentasiKegiatans',
+                    ])
+                    ->loadCount([
+                        'likeKegiatans',
+                        'dislikeKegiatans',
+                        'diskusis',
+                    ])
+            )
         );
     }
 

@@ -24,7 +24,7 @@ class ActivityRepositoryImpl implements ActivityRepository {
           'deskripsi': activity.description,
           'tanggal': _formatDate(activity.date),
           'poin_kegiatan': activity.pointsGenerated,
-          if (categoryId != null) 'kategori_id': categoryId,
+          'kategori_id': categoryId,
         },
       ),
     );
@@ -132,7 +132,7 @@ class ActivityRepositoryImpl implements ActivityRepository {
           'deskripsi': activity.description,
           'tanggal': _formatDate(activity.date),
           'poin_kegiatan': activity.pointsGenerated,
-          if (categoryId != null) 'kategori_id': categoryId,
+          'kategori_id': categoryId,
         },
       ),
     );

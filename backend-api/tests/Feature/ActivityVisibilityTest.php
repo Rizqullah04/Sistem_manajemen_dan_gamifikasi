@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Kegiatan;
+use App\Models\KategoriKegiatan;
 use App\Models\Ormawa;
 use App\Models\PoinLog;
 use App\Models\User;
@@ -194,6 +195,70 @@ class ActivityVisibilityTest extends TestCase
             'id_kegiatan' => $activity->id_kegiatan,
             'caption' => 'Foto kegiatan',
             'file_url' => $fileUrl,
+        ]);
+    }
+
+    public function test_activity_category_and_editable_fields_are_persisted(): void
+    {
+        $firstCategory = KategoriKegiatan::create([
+            'nama_kategori' => 'Seminar',
+            'poin_dasar' => 0,
+        ]);
+        $secondCategory = KategoriKegiatan::create([
+            'nama_kategori' => 'Pelatihan',
+            'poin_dasar' => 0,
+        ]);
+        Sanctum::actingAs(User::factory()->create([
+            'role' => 'admin',
+            'status_akun' => 'aktif',
+        ]));
+
+        $created = $this->postJson('/api/kegiatans', [
+            'kategori_id' => $firstCategory->id,
+            'nama_kegiatan' => 'Seminar Awal',
+            'deskripsi' => 'Deskripsi kegiatan awal.',
+            'tanggal' => '2026-08-10',
+            'poin_kegiatan' => 0,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.kategori.nama_kategori', 'Seminar');
+
+        $activityId = $created->json('data.id_kegiatan');
+
+        $this->patchJson("/api/kegiatans/{$activityId}", [
+            'kategori_id' => $secondCategory->id,
+            'nama_kegiatan' => 'Pelatihan Diperbarui',
+            'deskripsi' => 'Seluruh informasi kegiatan telah diperbarui.',
+            'tanggal' => '2026-09-15',
+            'poin_kegiatan' => 99,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.nama_kegiatan', 'Pelatihan Diperbarui')
+            ->assertJsonPath(
+                'data.deskripsi',
+                'Seluruh informasi kegiatan telah diperbarui.'
+            )
+            ->assertJsonPath('data.tanggal', '2026-09-15')
+            ->assertJsonPath('data.kategori.nama_kategori', 'Pelatihan');
+
+        $this->assertDatabaseHas('kegiatans', [
+            'id_kegiatan' => $activityId,
+            'kategori_id' => $secondCategory->id,
+            'nama_kegiatan' => 'Pelatihan Diperbarui',
+            'deskripsi' => 'Seluruh informasi kegiatan telah diperbarui.',
+            'tanggal' => '2026-09-15 00:00:00',
+            'poin_kegiatan' => 0,
+        ]);
+
+        $this->patchJson("/api/kegiatans/{$activityId}", [
+            'kategori_id' => null,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.kategori', null);
+
+        $this->assertDatabaseHas('kegiatans', [
+            'id_kegiatan' => $activityId,
+            'kategori_id' => null,
         ]);
     }
 

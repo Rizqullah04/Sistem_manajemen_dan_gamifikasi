@@ -12,6 +12,7 @@ class StoreKegiatanRequest extends ApiFormRequest
             'id_ormawa' => $this->user()?->role === 'admin'
                 ? ['nullable', 'exists:ormawas,id_ormawa']
                 : ['required', 'exists:ormawas,id_ormawa'],
+            'kategori_id' => ['nullable', 'exists:kategori_kegiatans,id'],
             'nama_kegiatan' => ['required', 'string', 'max:150'],
             'deskripsi' => ['required', 'string'],
             'tanggal' => ['required', 'date'],
