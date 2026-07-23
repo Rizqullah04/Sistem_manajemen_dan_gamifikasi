@@ -81,7 +81,7 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
       } else {
         await widget.dio.post<Map<String, dynamic>>(
           '/kategori-kegiatans',
-          data: {'nama_kategori': result},
+          data: {'nama_kategori': result, 'poin_dasar': 0},
         );
       }
       await _reloadCategories();

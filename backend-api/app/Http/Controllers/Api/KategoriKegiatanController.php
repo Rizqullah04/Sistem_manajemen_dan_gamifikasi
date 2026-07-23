@@ -24,7 +24,9 @@ class KategoriKegiatanController extends Controller
 
     public function store(StoreKategoriKegiatanRequest $request): JsonResponse
     {
-        $kategori = KategoriKegiatan::create($request->validated());
+        $data = $request->validated();
+        $data['poin_dasar'] ??= 0;
+        $kategori = KategoriKegiatan::create($data);
 
         return $this->successResponse('Kategori kegiatan berhasil dibuat', new KategoriKegiatanResource($kategori), 201);
     }

@@ -11,7 +11,7 @@ class StoreKategoriKegiatanRequest extends ApiFormRequest
         return [
             'nama_kategori' => ['required', 'string', 'max:100'],
             'deskripsi' => ['nullable', 'string'],
-            'poin_dasar' => ['required', 'integer', 'min:0'],
+            'poin_dasar' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 }
