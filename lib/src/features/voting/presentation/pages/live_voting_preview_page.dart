@@ -9,7 +9,6 @@ class VotingModel {
     required this.title,
     required this.endTime,
     required this.totalParticipants,
-    required this.targetParticipants,
     this.status = 'AKTIF',
     this.candidates = const [],
     this.activities = const [],
@@ -19,17 +18,12 @@ class VotingModel {
   final String title;
   final DateTime endTime;
   final int totalParticipants;
-  final int targetParticipants;
   final String status;
   final List<CandidateVotingOption> candidates;
   final List<ActivityVotingOption> activities;
 
   bool get isKetua => tipeVoting.toUpperCase() == 'KETUA';
 
-  double get participationRatio {
-    if (targetParticipants <= 0) return 0;
-    return (totalParticipants / targetParticipants).clamp(0.0, 1.0).toDouble();
-  }
 }
 
 class CandidateVotingOption {
@@ -167,8 +161,6 @@ class _VotingHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percentage = (data.participationRatio * 100).round();
-
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -231,8 +223,7 @@ class _VotingHeaderCard extends StatelessWidget {
           Row(
             children: [
               _ParticipationRing(
-                percentage: percentage,
-                value: data.participationRatio,
+                participantCount: data.totalParticipants,
               ),
               const SizedBox(width: 18),
               Expanded(
@@ -247,8 +238,7 @@ class _VotingHeaderCard extends StatelessWidget {
                     _StatPill(
                       icon: Icons.groups_2_rounded,
                       label: 'Partisipasi',
-                      value:
-                          '${data.totalParticipants}/${data.targetParticipants}',
+                      value: '${data.totalParticipants} partisipan',
                     ),
                   ],
                 ),
@@ -271,84 +261,48 @@ class _VotingHeaderCard extends StatelessWidget {
 }
 
 class _ParticipationRing extends StatelessWidget {
-  const _ParticipationRing({required this.percentage, required this.value});
+  const _ParticipationRing({required this.participantCount});
 
-  final int percentage;
-  final double value;
+  final int participantCount;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 112,
       height: 112,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: value),
-        duration: const Duration(milliseconds: 850),
-        curve: Curves.easeOutCubic,
-        builder: (context, animatedValue, _) {
-          return CustomPaint(
-            painter: _RingPainter(value: animatedValue),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$percentage%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const Text(
-                    'suara',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.06),
+          border: Border.all(color: const Color(0xFF8B5CF6), width: 3),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.groups_2_rounded,
+                color: Color(0xFF22D3EE),
+                size: 22,
               ),
-            ),
-          );
-        },
+              const SizedBox(height: 4),
+              Text(
+                '$participantCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Text(
+                'partisipan',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
       ),
     );
-  }
-}
-
-class _RingPainter extends CustomPainter {
-  const _RingPainter({required this.value});
-
-  final double value;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = math.min(size.width, size.height) / 2 - 8;
-    final backgroundPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.12)
-      ..strokeWidth = 10
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final progressPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF8B5CF6), Color(0xFF22D3EE)],
-      ).createShader(Offset.zero & size)
-      ..strokeWidth = 10
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, backgroundPaint);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      math.pi * 2 * value.clamp(0.0, 1.0).toDouble(),
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _RingPainter oldDelegate) {
-    return oldDelegate.value != value;
   }
 }
 

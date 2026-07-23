@@ -1705,7 +1705,6 @@ VotingModel _buildLivePreviewData({
     0,
     (sum, option) => sum + option.votes,
   );
-  final participantTarget = totalVotes <= 0 ? 100 : totalVotes + 30;
   final isKetua = voting.type == VotingType.ketua;
   final isWeighted =
       voting.calculationMethod ==
@@ -1722,7 +1721,6 @@ VotingModel _buildLivePreviewData({
         : voting.title,
     endTime: voting.endDate,
     totalParticipants: totalVotes,
-    targetParticipants: participantTarget,
     status: voting.status,
     candidates: isKetua
         ? voting.options
