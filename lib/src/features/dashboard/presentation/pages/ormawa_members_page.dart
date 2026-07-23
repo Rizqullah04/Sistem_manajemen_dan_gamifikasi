@@ -551,6 +551,45 @@ class _MemberCard extends StatelessWidget {
                   label: member.appointmentLabel,
                 ),
               ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (!isBemManagement)
+                    PopupMenuButton<String>(
+                      tooltip: 'Ubah status anggota',
+                      onSelected: onStatusChanged,
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: 'aktif',
+                          child: Text('Aktifkan anggota'),
+                        ),
+                        PopupMenuItem(
+                          value: 'nonaktif',
+                          child: Text('Nonaktifkan anggota'),
+                        ),
+                        PopupMenuItem(
+                          value: 'ditolak',
+                          child: Text('Tandai bukan anggota'),
+                        ),
+                      ],
+                      child: Chip(
+                        label: Text(member.statusLabel),
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: member.statusColor(context),
+                        side: BorderSide.none,
+                      ),
+                    ),
+                  _AppointmentButton(
+                    member: member,
+                    isUpdating: isUpdatingAppointment,
+                    onManage: onManageAppointment,
+                    onRemove: onRemoveAppointment,
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -560,47 +599,7 @@ class _MemberCard extends StatelessWidget {
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : SizedBox(
-                width: 132,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (!isBemManagement)
-                      PopupMenuButton<String>(
-                        tooltip: 'Ubah status anggota',
-                        onSelected: onStatusChanged,
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'aktif',
-                            child: Text('Aktifkan anggota'),
-                          ),
-                          PopupMenuItem(
-                            value: 'nonaktif',
-                            child: Text('Nonaktifkan anggota'),
-                          ),
-                          PopupMenuItem(
-                            value: 'ditolak',
-                            child: Text('Tandai bukan anggota'),
-                          ),
-                        ],
-                        child: Chip(
-                          label: Text(member.statusLabel),
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: member.statusColor(context),
-                          side: BorderSide.none,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    _AppointmentButton(
-                      member: member,
-                      isUpdating: isUpdatingAppointment,
-                      onManage: onManageAppointment,
-                      onRemove: onRemoveAppointment,
-                    ),
-                  ],
-                ),
-              ),
+            : null,
       ),
     );
   }

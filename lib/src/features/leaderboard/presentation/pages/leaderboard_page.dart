@@ -28,7 +28,7 @@ class LeaderboardPage extends ConsumerWidget {
     final isLoading = ref.watch(isLoadingProvider);
     final selectedType = ref.watch(leaderboardTypeProvider);
     final currentUser = ref.watch(currentUserProvider);
-    final content = ColoredBox(
+    final content = Material(
       color: Theme.of(context).colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -41,7 +41,12 @@ class LeaderboardPage extends ConsumerWidget {
               switchOutCurve: Curves.easeInQuart,
               child: isLoading
                   ? _buildShimmerContent()
-                  : _buildLeaderboardContent(context, remainingUsers, selectedType, currentUser),
+                  : _buildLeaderboardContent(
+                      context,
+                      remainingUsers,
+                      selectedType,
+                      currentUser,
+                    ),
               layoutBuilder: (currentChild, previousChildren) {
                 return Stack(
                   alignment: Alignment.topCenter,
@@ -71,9 +76,9 @@ class LeaderboardPage extends ConsumerWidget {
         ),
         title: Text(
           'LEADERBOARD',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
         actions: [
@@ -115,7 +120,12 @@ class LeaderboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeaderboardContent(BuildContext context, List users, LeaderboardType selectedType, UserModel currentUser) {
+  Widget _buildLeaderboardContent(
+    BuildContext context,
+    List users,
+    LeaderboardType selectedType,
+    UserModel currentUser,
+  ) {
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
@@ -124,7 +134,9 @@ class LeaderboardPage extends ConsumerWidget {
             child: Row(
               children: [
                 Text(
-                  selectedType == LeaderboardType.individu ? 'Top Individu' : 'Top Ormawa',
+                  selectedType == LeaderboardType.individu
+                      ? 'Top Individu'
+                      : 'Top Ormawa',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
@@ -134,13 +146,18 @@ class LeaderboardPage extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF6C4AB6).withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      selectedType == LeaderboardType.individu ? 'Personal Ranking' : 'Ormawa Ranking',
+                      selectedType == LeaderboardType.individu
+                          ? 'Personal Ranking'
+                          : 'Ormawa Ranking',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 12,
@@ -191,11 +208,32 @@ class LeaderboardPage extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Container(width: 80, height: 150, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                  Container(
+                    width: 80,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Container(width: 90, height: 190, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                  Container(
+                    width: 90,
+                    height: 190,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Container(width: 80, height: 130, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                  Container(
+                    width: 80,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ],
               ),
             ),
