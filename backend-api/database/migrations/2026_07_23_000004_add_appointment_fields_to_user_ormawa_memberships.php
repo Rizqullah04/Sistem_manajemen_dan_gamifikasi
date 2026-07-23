@@ -10,6 +10,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('user_ormawa_memberships', function (Blueprint $table) {
+            // MySQL memakai unique index lama sebagai index pendukung FK id_user.
+            // Sediakan index biasa terlebih dahulu agar unique index aman dilepas.
+            $table->index('id_user', 'membership_user_foreign_index');
             $table->dropUnique(['id_user', 'id_ormawa']);
             $table->string('position', 40)->default('anggota_pengurus')->after('status');
             $table->string('division', 100)->nullable()->after('position');
@@ -54,6 +57,7 @@ return new class extends Migration
                 'ends_at',
             ]);
             $table->unique(['id_user', 'id_ormawa']);
+            $table->dropIndex('membership_user_foreign_index');
         });
     }
 };
