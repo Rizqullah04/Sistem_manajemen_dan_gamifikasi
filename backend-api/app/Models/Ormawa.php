@@ -14,7 +14,15 @@ class Ormawa extends Model
         'nama_ormawa',
         'deskripsi',
         'total_poin',
+        'eligible_for_award',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'eligible_for_award' => 'boolean',
+        ];
+    }
 
     public function users(): HasMany
     {

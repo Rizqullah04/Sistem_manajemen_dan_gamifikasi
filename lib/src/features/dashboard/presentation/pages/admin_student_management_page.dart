@@ -9,9 +9,12 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/p
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/widgets/dashboard_responsive.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/dashboard/presentation/widgets/dashboard_scaffold.dart';
 
-final adminStudentsProvider =
-    FutureProvider.autoDispose<List<ManagedStudent>>((ref) async {
-  final response = await ref.watch(dioProvider).get<Map<String, dynamic>>(
+final adminStudentsProvider = FutureProvider.autoDispose<List<ManagedStudent>>((
+  ref,
+) async {
+  final response = await ref
+      .watch(dioProvider)
+      .get<Map<String, dynamic>>(
         '/users',
         queryParameters: {'role': 'anggota'},
       );
@@ -56,6 +59,7 @@ class _AdminStudentManagementContentState
   final _searchController = TextEditingController();
   String _query = '';
   String? _updatingBemMemberId;
+  String? _updatingDpmMemberId;
 
   @override
   void dispose() {
@@ -110,10 +114,12 @@ class _AdminStudentManagementContentState
                 children: [
                   _StudentsHeader(
                     totalStudents: students.length,
-                    activeStudents:
-                        students.where((student) => student.isActive).length,
-                    pendingStudents:
-                        students.where((student) => student.isPending).length,
+                    activeStudents: students
+                        .where((student) => student.isActive)
+                        .length,
+                    pendingStudents: students
+                        .where((student) => student.isPending)
+                        .length,
                     representedOrmawaCount: students
                         .map((student) => student.ormawaName)
                         .where((name) => name != '-')
@@ -159,7 +165,9 @@ class _AdminStudentManagementContentState
                     _StudentDataTable(
                       students: filtered,
                       updatingBemMemberId: _updatingBemMemberId,
+                      updatingDpmMemberId: _updatingDpmMemberId,
                       onBemMembershipChanged: _updateBemMembership,
+                      onDpmMembershipChanged: _updateDpmMembership,
                     )
                   else
                     ...filtered.map(
@@ -168,7 +176,9 @@ class _AdminStudentManagementContentState
                         child: _StudentCard(
                           student: student,
                           isUpdatingBem: _updatingBemMemberId == student.id,
+                          isUpdatingDpm: _updatingDpmMemberId == student.id,
                           onBemMembershipChanged: _updateBemMembership,
+                          onDpmMembershipChanged: _updateDpmMembership,
                         ),
                       ),
                     ),
@@ -231,6 +241,54 @@ class _AdminStudentManagementContentState
       if (mounted) setState(() => _updatingBemMemberId = null);
     }
   }
+
+  Future<void> _updateDpmMembership(
+    ManagedStudent student,
+    bool shouldBeMember,
+  ) async {
+    String? position;
+    if (shouldBeMember) {
+      position = await showDialog<String>(
+        context: context,
+        builder: (context) => _DpmPositionDialog(
+          initialPosition: student.dpmPosition ?? 'anggota_pengurus',
+        ),
+      );
+      if (position == null || !mounted) return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _updatingDpmMemberId = student.id);
+    try {
+      final dio = ref.read(dioProvider);
+      if (shouldBeMember) {
+        await dio.post<Map<String, dynamic>>(
+          '/dpm/members',
+          data: {'id_user': student.id, 'position': position},
+        );
+      } else {
+        await dio.delete<Map<String, dynamic>>('/dpm/members/${student.id}');
+      }
+
+      ref.invalidate(adminStudentsProvider);
+      await ref.read(adminStudentsProvider.future);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            shouldBeMember
+                ? 'Jabatan DPM ${student.name} berhasil disimpan.'
+                : 'Jabatan DPM ${student.name} telah diakhiri.',
+          ),
+        ),
+      );
+    } on DioException catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _updatingDpmMemberId = null);
+    }
+  }
 }
 
 class _StudentsHeader extends StatelessWidget {
@@ -278,16 +336,16 @@ class _StudentsHeader extends StatelessWidget {
       children: [
         Text(
           'Monitoring Mahasiswa',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         Text(
           'Pantau seluruh akun mahasiswa dari semua Ormawa yang terdaftar.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
         if (isWide)
@@ -351,8 +409,8 @@ class _SummaryPill extends StatelessWidget {
                   Text(
                     value,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -368,13 +426,18 @@ class _StudentDataTable extends StatelessWidget {
   const _StudentDataTable({
     required this.students,
     required this.updatingBemMemberId,
+    required this.updatingDpmMemberId,
     required this.onBemMembershipChanged,
+    required this.onDpmMembershipChanged,
   });
 
   final List<ManagedStudent> students;
   final String? updatingBemMemberId;
+  final String? updatingDpmMemberId;
   final void Function(ManagedStudent student, bool shouldBeMember)
   onBemMembershipChanged;
+  final void Function(ManagedStudent student, bool shouldBeMember)
+  onDpmMembershipChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -391,6 +454,7 @@ class _StudentDataTable extends StatelessWidget {
             DataColumn(label: Text('Asal Ormawa')),
             DataColumn(label: Text('Email')),
             DataColumn(label: Text('BEM')),
+            DataColumn(label: Text('DPM')),
             DataColumn(label: Text('Status')),
             DataColumn(label: Text('Poin'), numeric: true),
           ],
@@ -409,6 +473,13 @@ class _StudentDataTable extends StatelessWidget {
                         onChanged: onBemMembershipChanged,
                       ),
                     ),
+                    DataCell(
+                      _DpmMembershipButton(
+                        student: student,
+                        isUpdating: updatingDpmMemberId == student.id,
+                        onChanged: onDpmMembershipChanged,
+                      ),
+                    ),
                     DataCell(_StatusChip(student: student)),
                     DataCell(Text('${student.points}')),
                   ],
@@ -425,13 +496,18 @@ class _StudentCard extends StatelessWidget {
   const _StudentCard({
     required this.student,
     required this.isUpdatingBem,
+    required this.isUpdatingDpm,
     required this.onBemMembershipChanged,
+    required this.onDpmMembershipChanged,
   });
 
   final ManagedStudent student;
   final bool isUpdatingBem;
+  final bool isUpdatingDpm;
   final void Function(ManagedStudent student, bool shouldBeMember)
   onBemMembershipChanged;
+  final void Function(ManagedStudent student, bool shouldBeMember)
+  onDpmMembershipChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +517,10 @@ class _StudentCard extends StatelessWidget {
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           child: Text(
@@ -468,10 +547,7 @@ class _StudentCard extends StatelessWidget {
                 label: student.ormawaName,
               ),
               const SizedBox(height: 4),
-              _StudentMeta(
-                icon: Icons.badge_outlined,
-                label: student.nim,
-              ),
+              _StudentMeta(icon: Icons.badge_outlined, label: student.nim),
               const SizedBox(height: 4),
               _StudentMeta(
                 icon: Icons.mail_outline_rounded,
@@ -485,10 +561,21 @@ class _StudentCard extends StatelessWidget {
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
-                child: _BemMembershipButton(
-                  student: student,
-                  isUpdating: isUpdatingBem,
-                  onChanged: onBemMembershipChanged,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _BemMembershipButton(
+                      student: student,
+                      isUpdating: isUpdatingBem,
+                      onChanged: onBemMembershipChanged,
+                    ),
+                    _DpmMembershipButton(
+                      student: student,
+                      isUpdating: isUpdatingDpm,
+                      onChanged: onDpmMembershipChanged,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 4),
@@ -527,8 +614,8 @@ class _StudentMeta extends StatelessWidget {
             label,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -570,6 +657,55 @@ class _BemMembershipButton extends StatelessWidget {
   }
 }
 
+class _DpmMembershipButton extends StatelessWidget {
+  const _DpmMembershipButton({
+    required this.student,
+    required this.isUpdating,
+    required this.onChanged,
+  });
+
+  final ManagedStudent student;
+  final bool isUpdating;
+  final void Function(ManagedStudent student, bool shouldBeMember) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isUpdating) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    if (student.isDpmMember) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          OutlinedButton.icon(
+            onPressed: student.isActive ? () => onChanged(student, true) : null,
+            icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+            label: const Text('Ubah DPM'),
+          ),
+          IconButton(
+            onPressed: student.isActive
+                ? () => onChanged(student, false)
+                : null,
+            tooltip: 'Akhiri jabatan DPM',
+            icon: const Icon(Icons.person_remove_alt_1_outlined, size: 18),
+          ),
+        ],
+      );
+    }
+
+    return OutlinedButton.icon(
+      onPressed: student.isActive ? () => onChanged(student, true) : null,
+      icon: const Icon(Icons.how_to_reg_outlined, size: 18),
+      label: const Text('Tunjuk DPM'),
+    );
+  }
+}
+
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.student});
 
@@ -594,6 +730,8 @@ class ManagedStudent {
     required this.email,
     required this.ormawaName,
     required this.isBemMember,
+    required this.isDpmMember,
+    required this.dpmPosition,
     required this.points,
     required this.status,
   });
@@ -604,6 +742,8 @@ class ManagedStudent {
   final String email;
   final String ormawaName;
   final bool isBemMember;
+  final bool isDpmMember;
+  final String? dpmPosition;
   final int points;
   final String status;
 
@@ -651,6 +791,7 @@ class ManagedStudent {
 
   factory ManagedStudent.fromJson(Map<String, dynamic> json) {
     final ormawa = json['ormawa'];
+    final dpmMembership = json['dpm_membership'];
 
     return ManagedStudent(
       id: json['id_user']?.toString() ?? '',
@@ -669,8 +810,71 @@ class ManagedStudent {
           (json['bem_membership'] as Map<String, dynamic>)['status']
                   ?.toString() ==
               'aktif',
+      isDpmMember:
+          dpmMembership is Map<String, dynamic> &&
+          dpmMembership['status']?.toString() == 'aktif',
+      dpmPosition: dpmMembership is Map<String, dynamic>
+          ? dpmMembership['position']?.toString()
+          : null,
       points: int.tryParse(json['poin']?.toString() ?? '0') ?? 0,
       status: json['status_akun']?.toString() ?? '-',
+    );
+  }
+}
+
+class _DpmPositionDialog extends StatefulWidget {
+  const _DpmPositionDialog({required this.initialPosition});
+
+  final String initialPosition;
+
+  @override
+  State<_DpmPositionDialog> createState() => _DpmPositionDialogState();
+}
+
+class _DpmPositionDialogState extends State<_DpmPositionDialog> {
+  static const _positions = <String, String>{
+    'ketua': 'Ketua',
+    'wakil_ketua': 'Wakil Ketua',
+    'sekretaris': 'Sekretaris',
+    'bendahara': 'Bendahara',
+    'anggota_pengurus': 'Anggota Pengurus',
+  };
+
+  late String _position;
+
+  @override
+  void initState() {
+    super.initState();
+    _position = widget.initialPosition;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Tunjuk Pengurus DPM'),
+      content: DropdownButtonFormField<String>(
+        initialValue: _position,
+        decoration: const InputDecoration(labelText: 'Jabatan'),
+        items: _positions.entries
+            .map(
+              (entry) =>
+                  DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+            )
+            .toList(),
+        onChanged: (value) {
+          if (value != null) setState(() => _position = value);
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_position),
+          child: const Text('Simpan'),
+        ),
+      ],
     );
   }
 }

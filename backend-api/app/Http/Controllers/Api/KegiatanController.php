@@ -58,8 +58,12 @@ class KegiatanController extends Controller
                 [
                     'deskripsi' => 'Dewan Perwakilan Mahasiswa Fakultas Teknik',
                     'total_poin' => 0,
+                    'eligible_for_award' => false,
                 ]
             );
+            if ($dpmOrmawa->eligible_for_award) {
+                $dpmOrmawa->forceFill(['eligible_for_award' => false])->save();
+            }
             $data['id_ormawa'] = $dpmOrmawa->id_ormawa;
         } elseif (! $this->userDapatMengaksesOrmawa($request, (int) $data['id_ormawa'])) {
             return $this->errorResponse('Anda tidak memiliki akses ke ormawa ini.', status: 403);

@@ -70,6 +70,7 @@ class DatabaseSeeder extends Seeder
             ], [
                 'deskripsi' => $deskripsi,
                 'total_poin' => 0,
+                'eligible_for_award' => $namaOrmawa !== 'DPM Fakultas Teknik',
             ]);
 
             if (isset($ormawaEmails[$namaOrmawa])) {

@@ -39,7 +39,8 @@ class LeaderboardController extends Controller
             return $this->successResponse('Leaderboard individu berhasil diambil', LeaderboardResource::collection($users));
         }
 
-        $ormawas = Ormawa::withCount(['kegiatans as total_kegiatan'])
+        $ormawas = Ormawa::where('eligible_for_award', true)
+            ->withCount(['kegiatans as total_kegiatan'])
             ->get()
             ->each(function (Ormawa $ormawa) {
                 $ormawa->total_poin = $ormawa->calculateTotalPoinFromLogs();

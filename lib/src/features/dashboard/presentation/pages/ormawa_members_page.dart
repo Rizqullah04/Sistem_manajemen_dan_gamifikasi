@@ -17,7 +17,9 @@ final ormawaMembersProvider = FutureProvider<List<OrmawaMember>>((ref) async {
   }
 
   final isBemAccount = user!.name.toLowerCase().contains('bem');
-  final response = await ref.watch(dioProvider).get<Map<String, dynamic>>(
+  final response = await ref
+      .watch(dioProvider)
+      .get<Map<String, dynamic>>(
         isBemAccount ? '/bem/members' : '/ormawa/members',
       );
 
@@ -60,7 +62,7 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
   final _searchController = TextEditingController();
   String _query = '';
   String? _updatingMemberId;
-  String? _updatingBemMemberId;
+  String? _updatingAppointmentId;
 
   @override
   void dispose() {
@@ -117,12 +119,15 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
                     activeMembers: isBemAccount
                         ? members.where((member) => member.isBemMember).length
                         : members.where((member) => member.isActive).length,
-                    inactiveMembers:
-                        members.where((member) => member.isInactive).length,
-                    pendingMembers:
-                        members.where((member) => member.isPending).length,
-                    rejectedMembers:
-                        members.where((member) => member.isRejected).length,
+                    inactiveMembers: members
+                        .where((member) => member.isInactive)
+                        .length,
+                    pendingMembers: members
+                        .where((member) => member.isPending)
+                        .length,
+                    rejectedMembers: members
+                        .where((member) => member.isRejected)
+                        .length,
                     isWide: isWide,
                     isBemAccount: isBemAccount,
                   ),
@@ -168,12 +173,14 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
                           member: member,
                           isUpdating: _updatingMemberId == member.id,
                           isBemManagement: isBemAccount,
-                          isUpdatingBem: _updatingBemMemberId == member.id,
-                          onStatusChanged: (status) => _updateMemberStatus(
-                            member,
-                            status,
-                          ),
-                          onBemMembershipChanged: _updateBemMembership,
+                          isUpdatingAppointment:
+                              _updatingAppointmentId == member.id,
+                          onStatusChanged: (status) =>
+                              _updateMemberStatus(member, status),
+                          onManageAppointment: () =>
+                              _manageAppointment(member, isBemAccount),
+                          onRemoveAppointment: () =>
+                              _removeAppointment(member, isBemAccount),
                         ),
                       ),
                     ),
@@ -199,18 +206,17 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
     return error.toString();
   }
 
-  Future<void> _updateMemberStatus(
-    OrmawaMember member,
-    String status,
-  ) async {
+  Future<void> _updateMemberStatus(OrmawaMember member, String status) async {
     final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _updatingMemberId = member.id);
     try {
-      await ref.read(dioProvider).patch<Map<String, dynamic>>(
-        '/ormawa/members/${member.id}',
-        data: {'status_akun': status},
-      );
+      await ref
+          .read(dioProvider)
+          .patch<Map<String, dynamic>>(
+            '/ormawa/members/${member.id}',
+            data: {'status_akun': status},
+          );
       ref.invalidate(ormawaMembersProvider);
       ref.invalidate(dashboardSummaryProvider);
       ref.invalidate(realtimeDashboardSummaryProvider);
@@ -222,49 +228,106 @@ class _OrmawaMembersContentState extends ConsumerState<_OrmawaMembersContent> {
       );
     } on DioException catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(_errorMessage(error))),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(_errorMessage(error))));
     } finally {
       if (mounted) setState(() => _updatingMemberId = null);
     }
   }
 
-  Future<void> _updateBemMembership(
+  Future<void> _manageAppointment(
     OrmawaMember member,
-    bool shouldBeMember,
+    bool isBemAccount,
   ) async {
+    final appointment = await showDialog<_AppointmentInput>(
+      context: context,
+      builder: (context) => _AppointmentDialog(member: member),
+    );
+    if (appointment == null || !mounted) return;
+
     final messenger = ScaffoldMessenger.of(context);
 
-    setState(() => _updatingBemMemberId = member.id);
+    setState(() => _updatingAppointmentId = member.id);
     try {
       final dio = ref.read(dioProvider);
-      if (shouldBeMember) {
+      if (isBemAccount) {
         await dio.post<Map<String, dynamic>>(
           '/bem/members',
-          data: {'id_user': member.id},
+          data: {
+            'id_user': member.id,
+            'position': appointment.position,
+            'division': appointment.division,
+          },
         );
       } else {
-        await dio.delete<Map<String, dynamic>>('/bem/members/${member.id}');
+        await dio.post<Map<String, dynamic>>(
+          '/ormawa/members/${member.id}/appointment',
+          data: {
+            'position': appointment.position,
+            'division': appointment.division,
+          },
+        );
       }
       ref.invalidate(ormawaMembersProvider);
       await ref.read(ormawaMembersProvider.future);
 
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            shouldBeMember
-                ? '${member.name} ditambahkan ke BEM.'
-                : '${member.name} dikeluarkan dari BEM.',
-          ),
-        ),
+        SnackBar(content: Text('Jabatan ${member.name} berhasil disimpan.')),
       );
     } on DioException catch (error) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(_errorMessage(error))));
     } finally {
-      if (mounted) setState(() => _updatingBemMemberId = null);
+      if (mounted) setState(() => _updatingAppointmentId = null);
+    }
+  }
+
+  Future<void> _removeAppointment(
+    OrmawaMember member,
+    bool isBemAccount,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Akhiri Jabatan?'),
+        content: Text(
+          'Jabatan aktif ${member.name} akan dinonaktifkan untuk periode ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Akhiri'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _updatingAppointmentId = member.id);
+    try {
+      await ref
+          .read(dioProvider)
+          .delete<Map<String, dynamic>>(
+            isBemAccount
+                ? '/bem/members/${member.id}'
+                : '/ormawa/members/${member.id}/appointment',
+          );
+      ref.invalidate(ormawaMembersProvider);
+      await ref.read(ormawaMembersProvider.future);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Jabatan ${member.name} telah diakhiri.')),
+      );
+    } on DioException catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _updatingAppointmentId = null);
     }
   }
 }
@@ -323,9 +386,9 @@ class _MembersHeader extends StatelessWidget {
       children: [
         Text(
           'Monitoring Anggota',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         Text(
@@ -333,8 +396,8 @@ class _MembersHeader extends StatelessWidget {
               ? 'Tunjuk mahasiswa dari seluruh himpunan Teknik sebagai anggota BEM.'
               : 'Pantau akun anggota yang memilih Ormawa Anda saat registrasi.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
         if (isWide)
@@ -398,8 +461,8 @@ class _SummaryPill extends StatelessWidget {
                   Text(
                     value,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -416,35 +479,39 @@ class _MemberCard extends StatelessWidget {
     required this.member,
     required this.isUpdating,
     required this.isBemManagement,
-    required this.isUpdatingBem,
+    required this.isUpdatingAppointment,
     required this.onStatusChanged,
-    required this.onBemMembershipChanged,
+    required this.onManageAppointment,
+    required this.onRemoveAppointment,
   });
 
   final OrmawaMember member;
   final bool isUpdating;
   final bool isBemManagement;
-  final bool isUpdatingBem;
+  final bool isUpdatingAppointment;
   final ValueChanged<String> onStatusChanged;
-  final void Function(OrmawaMember member, bool shouldBeMember)
-  onBemMembershipChanged;
+  final VoidCallback onManageAppointment;
+  final VoidCallback onRemoveAppointment;
 
   @override
   Widget build(BuildContext context) {
     final initials = member.name.trim().isEmpty
         ? 'A'
         : member.name
-            .trim()
-            .split(RegExp(r'\s+'))
-            .take(2)
-            .map((part) => part[0].toUpperCase())
-            .join();
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((part) => part[0].toUpperCase())
+              .join();
 
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           child: Text(
@@ -466,7 +533,10 @@ class _MemberCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _MemberMeta(icon: Icons.mail_outline_rounded, label: member.email),
+              _MemberMeta(
+                icon: Icons.mail_outline_rounded,
+                label: member.email,
+              ),
               const SizedBox(height: 4),
               _MemberMeta(icon: Icons.badge_outlined, label: member.nim),
               const SizedBox(height: 4),
@@ -474,6 +544,13 @@ class _MemberCard extends StatelessWidget {
                 icon: Icons.stars_outlined,
                 label: '${member.points} poin',
               ),
+              if (member.hasActiveAppointment) ...[
+                const SizedBox(height: 4),
+                _MemberMeta(
+                  icon: Icons.work_outline_rounded,
+                  label: member.appointmentLabel,
+                ),
+              ],
             ],
           ),
         ),
@@ -483,37 +560,48 @@ class _MemberCard extends StatelessWidget {
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : isBemManagement
-            ? _BemMembershipButton(
-                member: member,
-                isUpdating: isUpdatingBem,
-                onChanged: onBemMembershipChanged,
-              )
-            : PopupMenuButton<String>(
-                tooltip: 'Ubah status anggota',
-                onSelected: onStatusChanged,
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: 'aktif',
-                    child: Text('Aktifkan anggota'),
-                  ),
-                  PopupMenuItem(
-                    value: 'nonaktif',
-                    child: Text('Nonaktifkan anggota'),
-                  ),
-                  PopupMenuItem(
-                    value: 'ditolak',
-                    child: Text('Tandai bukan anggota'),
-                  ),
-                ],
-                child: Chip(
-                  label: Text(member.statusLabel),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: member.statusColor(context),
-                  side: BorderSide.none,
+            : SizedBox(
+                width: 132,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (!isBemManagement)
+                      PopupMenuButton<String>(
+                        tooltip: 'Ubah status anggota',
+                        onSelected: onStatusChanged,
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'aktif',
+                            child: Text('Aktifkan anggota'),
+                          ),
+                          PopupMenuItem(
+                            value: 'nonaktif',
+                            child: Text('Nonaktifkan anggota'),
+                          ),
+                          PopupMenuItem(
+                            value: 'ditolak',
+                            child: Text('Tandai bukan anggota'),
+                          ),
+                        ],
+                        child: Chip(
+                          label: Text(member.statusLabel),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: member.statusColor(context),
+                          side: BorderSide.none,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    _AppointmentButton(
+                      member: member,
+                      isUpdating: isUpdatingAppointment,
+                      onManage: onManageAppointment,
+                      onRemove: onRemoveAppointment,
+                    ),
+                  ],
                 ),
               ),
-        ),
+      ),
     );
   }
 }
@@ -540,8 +628,8 @@ class _MemberMeta extends StatelessWidget {
             label,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -549,16 +637,18 @@ class _MemberMeta extends StatelessWidget {
   }
 }
 
-class _BemMembershipButton extends StatelessWidget {
-  const _BemMembershipButton({
+class _AppointmentButton extends StatelessWidget {
+  const _AppointmentButton({
     required this.member,
     required this.isUpdating,
-    required this.onChanged,
+    required this.onManage,
+    required this.onRemove,
   });
 
   final OrmawaMember member;
   final bool isUpdating;
-  final void Function(OrmawaMember member, bool shouldBeMember) onChanged;
+  final VoidCallback onManage;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -570,15 +660,29 @@ class _BemMembershipButton extends StatelessWidget {
       );
     }
 
-    return OutlinedButton.icon(
-      onPressed: () => onChanged(member, !member.isBemMember),
-      icon: Icon(
-        member.isBemMember
-            ? Icons.person_remove_alt_1_outlined
-            : Icons.person_add_alt_1_rounded,
-        size: 18,
-      ),
-      label: Text(member.isBemMember ? 'Keluarkan' : 'Tambah BEM'),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (member.hasActiveAppointment)
+          IconButton(
+            onPressed: member.isActive ? onRemove : null,
+            tooltip: 'Akhiri jabatan',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.person_remove_alt_1_outlined, size: 18),
+          ),
+        Flexible(
+          child: OutlinedButton.icon(
+            onPressed: member.isActive ? onManage : null,
+            icon: Icon(
+              member.hasActiveAppointment
+                  ? Icons.manage_accounts_outlined
+                  : Icons.person_add_alt_1_rounded,
+              size: 18,
+            ),
+            label: Text(member.hasActiveAppointment ? 'Ubah' : 'Tunjuk'),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -590,6 +694,9 @@ class OrmawaMember {
     required this.nim,
     required this.email,
     required this.isBemMember,
+    required this.position,
+    required this.division,
+    required this.period,
     required this.points,
     required this.status,
   });
@@ -599,6 +706,9 @@ class OrmawaMember {
   final String nim;
   final String email;
   final bool isBemMember;
+  final String? position;
+  final String? division;
+  final String? period;
   final int points;
   final String status;
 
@@ -606,6 +716,17 @@ class OrmawaMember {
   bool get isInactive => status == 'nonaktif';
   bool get isPending => status == 'pending';
   bool get isRejected => status == 'ditolak';
+  bool get hasActiveAppointment => position != null;
+
+  String get appointmentLabel {
+    final label = _positionLabels[position] ?? position ?? 'Pengurus';
+    final details = [
+      if (division != null && division!.trim().isNotEmpty) division,
+      if (period != null && period!.trim().isNotEmpty) period,
+    ];
+
+    return details.isEmpty ? label : '$label • ${details.join(' • ')}';
+  }
 
   String get statusLabel {
     switch (status) {
@@ -636,6 +757,11 @@ class OrmawaMember {
   }
 
   factory OrmawaMember.fromJson(Map<String, dynamic> json) {
+    final membership = json['organization_membership'] is Map<String, dynamic>
+        ? json['organization_membership'] as Map<String, dynamic>
+        : json['bem_membership'] is Map<String, dynamic>
+        ? json['bem_membership'] as Map<String, dynamic>
+        : null;
     return OrmawaMember(
       id: json['id_user']?.toString() ?? '',
       name: json['nama']?.toString() ?? '-',
@@ -646,12 +772,126 @@ class OrmawaMember {
           '-',
       email: json['email']?.toString() ?? '-',
       isBemMember:
-          json['bem_membership'] is Map<String, dynamic> &&
-          (json['bem_membership'] as Map<String, dynamic>)['status']
-                  ?.toString() ==
-              'aktif',
+          membership != null && membership['status']?.toString() == 'aktif',
+      position:
+          membership != null && membership['status']?.toString() == 'aktif'
+          ? membership['position']?.toString()
+          : null,
+      division: membership?['division']?.toString(),
+      period: membership?['period']?.toString(),
       points: int.tryParse(json['poin']?.toString() ?? '0') ?? 0,
       status: json['status_akun']?.toString() ?? '-',
+    );
+  }
+}
+
+const _positionLabels = <String, String>{
+  'ketua': 'Ketua',
+  'wakil_ketua': 'Wakil Ketua',
+  'sekretaris': 'Sekretaris',
+  'bendahara': 'Bendahara',
+  'anggota_pengurus': 'Anggota Pengurus',
+};
+
+class _AppointmentInput {
+  const _AppointmentInput({required this.position, this.division});
+
+  final String position;
+  final String? division;
+}
+
+class _AppointmentDialog extends StatefulWidget {
+  const _AppointmentDialog({required this.member});
+
+  final OrmawaMember member;
+
+  @override
+  State<_AppointmentDialog> createState() => _AppointmentDialogState();
+}
+
+class _AppointmentDialogState extends State<_AppointmentDialog> {
+  late String _position;
+  late final TextEditingController _divisionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _position = widget.member.position ?? 'anggota_pengurus';
+    _divisionController = TextEditingController(
+      text: widget.member.division ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _divisionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        widget.member.hasActiveAppointment
+            ? 'Ubah Jabatan Pengurus'
+            : 'Tunjuk Pengurus',
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.member.name),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _position,
+              decoration: const InputDecoration(labelText: 'Jabatan'),
+              items: _positionLabels.entries
+                  .map(
+                    (entry) => DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) setState(() => _position = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _divisionController,
+              decoration: const InputDecoration(
+                labelText: 'Divisi (opsional)',
+                hintText: 'Contoh: Kominfo',
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Masa jabatan mengikuti periode aktif sistem.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final division = _divisionController.text.trim();
+            Navigator.of(context).pop(
+              _AppointmentInput(
+                position: _position,
+                division: division.isEmpty ? null : division,
+              ),
+            );
+          },
+          child: const Text('Simpan'),
+        ),
+      ],
     );
   }
 }

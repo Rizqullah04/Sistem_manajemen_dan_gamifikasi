@@ -49,4 +49,9 @@ class Period extends Model
     {
         return $this->hasMany(UserBadge::class, 'id_period', 'id_period');
     }
+
+    public function ormawaMemberships(): HasMany
+    {
+        return $this->hasMany(UserOrmawaMembership::class, 'id_period', 'id_period');
+    }
 }

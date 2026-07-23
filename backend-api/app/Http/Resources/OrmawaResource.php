@@ -14,6 +14,7 @@ class OrmawaResource extends JsonResource
             'nama_ormawa' => $this->nama_ormawa,
             'deskripsi' => $this->deskripsi,
             'total_poin' => $this->total_poin,
+            'eligible_for_award' => $this->eligible_for_award,
             'users' => $this->whenLoaded('users', fn () => UserResource::collection($this->users)),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

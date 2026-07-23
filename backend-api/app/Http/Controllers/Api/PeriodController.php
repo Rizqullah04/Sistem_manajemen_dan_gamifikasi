@@ -147,6 +147,7 @@ class PeriodController extends Controller
     private function snapshotOrmawas(Period $period): int
     {
         $ormawas = Ormawa::query()
+            ->where('eligible_for_award', true)
             ->orderByDesc('total_poin')
             ->orderBy('nama_ormawa')
             ->get()

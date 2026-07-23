@@ -11,8 +11,21 @@ class UserOrmawaMembership extends Model
         'id_user',
         'id_ormawa',
         'status',
+        'position',
+        'division',
+        'id_period',
+        'starts_at',
+        'ends_at',
         'appointed_by',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'starts_at' => 'date',
+            'ends_at' => 'date',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -27,5 +40,10 @@ class UserOrmawaMembership extends Model
     public function appointer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'appointed_by', 'id_user');
+    }
+
+    public function period(): BelongsTo
+    {
+        return $this->belongsTo(Period::class, 'id_period', 'id_period');
     }
 }

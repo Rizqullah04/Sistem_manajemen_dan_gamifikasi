@@ -60,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/ormawa-awards/generate', [OrmawaAwardController::class, 'generate']);
         Route::get('/ormawa-awards/history', [OrmawaAwardController::class, 'history']);
         Route::delete('/ormawa-awards/history/{result}', [OrmawaAwardController::class, 'destroyHistory']);
+        Route::post('/dpm/members', [UserController::class, 'appointDpmMember']);
+        Route::delete('/dpm/members/{user}', [UserController::class, 'removeDpmMember']);
         Route::apiResource('badges', BadgeController::class);
         Route::apiResource('activity-types', ActivityTypeController::class);
         Route::apiResource('kategori-kegiatans', KategoriKegiatanController::class)->except(['index', 'show']);
@@ -80,5 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:ormawa')->group(function () {
         Route::get('/ormawa/members', [UserController::class, 'ormawaMembers']);
         Route::patch('/ormawa/members/{user}', [UserController::class, 'updateOrmawaMember']);
+        Route::post('/ormawa/members/{user}/appointment', [UserController::class, 'appointOrmawaOfficial']);
+        Route::delete('/ormawa/members/{user}/appointment', [UserController::class, 'removeOrmawaOfficial']);
     });
 });

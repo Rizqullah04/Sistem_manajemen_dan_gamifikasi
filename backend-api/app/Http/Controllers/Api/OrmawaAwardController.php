@@ -52,6 +52,7 @@ class OrmawaAwardController extends Controller
     public function history(): JsonResponse
     {
         $histories = OrmawaAwardResult::with('ormawa')
+            ->whereHas('ormawa', fn ($query) => $query->where('eligible_for_award', true))
             ->orderByDesc('calculated_at')
             ->get()
             ->groupBy('periode')
@@ -232,6 +233,7 @@ class OrmawaAwardController extends Controller
     private function buildPayload(array $payload): array
     {
         $entries = Ormawa::query()
+            ->where('eligible_for_award', true)
             ->withCount(['users as member_count' => fn ($query) => $query->where('role', 'anggota')])
             ->orderBy('nama_ormawa')
             ->get()
