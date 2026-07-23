@@ -22,7 +22,11 @@ class ActivityListPage extends ConsumerStatefulWidget {
 }
 
 class _ActivityListPageState extends ConsumerState<ActivityListPage> {
+  static const _allFilter = 'Semua';
+  static const _latestFilter = 'Terbaru';
+
   final List<String> listKategori = [];
+  String _selectedFilter = _allFilter;
 
   @override
   void initState() {
@@ -51,6 +55,11 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                 .map((item) => item['nama_kategori']?.toString() ?? '')
                 .where((name) => name.isNotEmpty),
           );
+        if (_selectedFilter != _allFilter &&
+            _selectedFilter != _latestFilter &&
+            !listKategori.contains(_selectedFilter)) {
+          _selectedFilter = _allFilter;
+        }
       });
     } catch (_) {
       if (!mounted) return;
@@ -64,6 +73,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(activityControllerProvider);
     final user = ref.watch(authControllerProvider).user;
+    final visibleActivities = _filteredActivities(state.items);
 
     final canManageCategories = user?.role == UserRole.adminFaculty;
 
@@ -114,18 +124,40 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                     vertical: 12,
                   ),
                   itemCount:
-                      1 + state.items.length + (state.isLoadingMore ? 1 : 0),
+                      1 +
+                      (visibleActivities.isEmpty
+                          ? 1
+                          : visibleActivities.length) +
+                      (state.isLoadingMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == 0) {
-                      return _ActivityFeedHeader(userName: user?.name);
+                      return _ActivityFeedHeader(
+                        userName: user?.name,
+                        categories: listKategori,
+                        selectedFilter: _selectedFilter,
+                        onFilterSelected: (filter) {
+                          setState(() => _selectedFilter = filter);
+                        },
+                      );
                     }
-                    if (index > state.items.length) {
+                    if (visibleActivities.isEmpty && index == 1) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 36),
+                        child: EmptyState(
+                          title: 'Kategori masih kosong',
+                          subtitle:
+                              'Belum ada kegiatan pada filter yang dipilih.',
+                          icon: Icons.filter_alt_off_outlined,
+                        ),
+                      );
+                    }
+                    if (index > visibleActivities.length) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
                         child: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    final activity = state.items[index - 1];
+                    final activity = visibleActivities[index - 1];
                     return _ActivityCard(
                       activity: activity,
                       userRole: user?.role,
@@ -137,6 +169,19 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
         ),
       ),
     );
+  }
+
+  List<Activity> _filteredActivities(List<Activity> activities) {
+    final result =
+        _selectedFilter == _allFilter || _selectedFilter == _latestFilter
+        ? List<Activity>.from(activities)
+        : activities
+              .where((activity) => activity.category == _selectedFilter)
+              .toList();
+    if (_selectedFilter == _latestFilter) {
+      result.sort((a, b) => b.date.compareTo(a.date));
+    }
+    return result;
   }
 
   Future<void> _openActivityFormPage({Activity? activity}) async {
@@ -512,9 +557,17 @@ class _DatePickerCard extends StatelessWidget {
 }
 
 class _ActivityFeedHeader extends StatelessWidget {
-  const _ActivityFeedHeader({this.userName});
+  const _ActivityFeedHeader({
+    this.userName,
+    required this.categories,
+    required this.selectedFilter,
+    required this.onFilterSelected,
+  });
 
   final String? userName;
+  final List<String> categories;
+  final String selectedFilter;
+  final ValueChanged<String> onFilterSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -538,11 +591,18 @@ class _ActivityFeedHeader extends StatelessWidget {
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
-              children: const [
-                Chip(label: Text('Trending')),
-                Chip(label: Text('Terbaru')),
-                Chip(label: Text('Seminar')),
-                Chip(label: Text('Pelatihan')),
+              runSpacing: 8,
+              children: [
+                for (final filter in <String>[
+                  _ActivityListPageState._allFilter,
+                  _ActivityListPageState._latestFilter,
+                  ...categories,
+                ])
+                  FilterChip(
+                    label: Text(filter),
+                    selected: selectedFilter == filter,
+                    onSelected: (_) => onFilterSelected(filter),
+                  ),
               ],
             ),
           ],

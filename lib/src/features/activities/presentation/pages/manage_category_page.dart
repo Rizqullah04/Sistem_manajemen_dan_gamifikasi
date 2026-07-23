@@ -29,95 +29,47 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Kelola Kategori'),
-        ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: const Color(0xFF7C3AED),
-          foregroundColor: Colors.white,
-          onPressed: () => _showCategoryDialog(),
-          child: const Icon(Icons.add),
-        ),
-        body: _categories.isEmpty
-            ? const _EmptyCategoryState()
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final category = _categories[index];
-                  return _CategoryTile(
-                    category: category,
-                    onEdit: () => _showCategoryDialog(
-                      initialValue: category,
-                      index: index,
-                    ),
-                    onDelete: () => _confirmDelete(index),
-                  );
-                },
-              ),
+      appBar: AppBar(title: const Text('Kelola Kategori')),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF7C3AED),
+        foregroundColor: Colors.white,
+        onPressed: () => _showCategoryDialog(),
+        child: const Icon(Icons.add),
+      ),
+      body: _categories.isEmpty
+          ? const _EmptyCategoryState()
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                return _CategoryTile(
+                  category: category,
+                  onEdit: () =>
+                      _showCategoryDialog(initialValue: category, index: index),
+                  onDelete: () => _confirmDelete(index),
+                );
+              },
+            ),
     );
   }
 
   Future<void> _showCategoryDialog({String? initialValue, int? index}) async {
-    final controller = TextEditingController(text: initialValue);
-    final formKey = GlobalKey<FormState>();
     final isEditing = index != null;
 
     final result = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF0B1024),
-          title: Text(
-            isEditing ? 'Edit Kategori' : 'Tambah Kategori',
-            style: const TextStyle(color: Colors.white),
-          ),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: controller,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Nama kategori',
-                prefixIcon: Icon(Icons.category_outlined),
-              ),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.isEmpty) return 'Nama kategori wajib diisi';
-                final exists = _categories.asMap().entries.any(
-                  (entry) =>
-                      entry.key != index &&
-                      entry.value.toLowerCase() == text.toLowerCase(),
-                );
-                if (exists) return 'Kategori sudah ada';
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.of(context).pop(controller.text.trim());
-              },
-              child: Text(isEditing ? 'Simpan' : 'Tambah'),
-            ),
-          ],
-        );
-      },
+      barrierDismissible: false,
+      builder: (_) => _CategoryNameDialog(
+        initialValue: initialValue,
+        isEditing: isEditing,
+        existingCategories: _categories,
+        editingIndex: index,
+      ),
     );
 
-    controller.dispose();
-    if (result == null || result.isEmpty) return;
+    await Future<void>.delayed(kThemeAnimationDuration);
+    if (!mounted || result == null || result.isEmpty) return;
 
     try {
       if (isEditing) {
@@ -126,18 +78,19 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
           '/kategori-kegiatans/$id',
           data: {'nama_kategori': result},
         );
-        setState(() => _categories[index] = result);
       } else {
         await widget.dio.post<Map<String, dynamic>>(
           '/kategori-kegiatans',
           data: {'nama_kategori': result},
         );
-        setState(() => _categories.add(result));
       }
-      _notifyChanged();
+      await _reloadCategories();
     } on DioException catch (error) {
       if (!mounted) return;
-      _showError(error.response?.data?['message']?.toString() ?? 'Kategori gagal disimpan.');
+      _showError(
+        error.response?.data?['message']?.toString() ??
+            'Kategori gagal disimpan.',
+      );
     }
   }
 
@@ -178,20 +131,26 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
       },
     );
 
+    await Future<void>.delayed(kThemeAnimationDuration);
+    if (!mounted) return;
     if (confirmed != true) return;
     try {
       final id = await _findId(category);
       await widget.dio.delete<Map<String, dynamic>>('/kategori-kegiatans/$id');
-      setState(() => _categories.removeAt(index));
-      _notifyChanged();
+      await _reloadCategories();
     } on DioException catch (error) {
       if (!mounted) return;
-      _showError(error.response?.data?['message']?.toString() ?? 'Kategori gagal dihapus.');
+      _showError(
+        error.response?.data?['message']?.toString() ??
+            'Kategori gagal dihapus.',
+      );
     }
   }
 
   Future<String> _findId(String name) async {
-    final response = await widget.dio.get<Map<String, dynamic>>('/kategori-kegiatans');
+    final response = await widget.dio.get<Map<String, dynamic>>(
+      '/kategori-kegiatans',
+    );
     final data = response.data?['data'];
     if (data is List) {
       for (final item in data.whereType<Map<String, dynamic>>()) {
@@ -203,12 +162,124 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
     throw StateError('Kategori tidak ditemukan.');
   }
 
+  Future<void> _reloadCategories() async {
+    final response = await widget.dio.get<Map<String, dynamic>>(
+      '/kategori-kegiatans',
+    );
+    final data = response.data?['data'];
+    if (!mounted || data is! List) return;
+    final categories = data
+        .whereType<Map<String, dynamic>>()
+        .map((item) => item['nama_kategori']?.toString() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList();
+    setState(() {
+      _categories
+        ..clear()
+        ..addAll(categories);
+    });
+    _notifyChanged();
+  }
+
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _notifyChanged() {
     widget.onCategoriesChanged?.call(List<String>.from(_categories));
+  }
+}
+
+class _CategoryNameDialog extends StatefulWidget {
+  const _CategoryNameDialog({
+    required this.initialValue,
+    required this.isEditing,
+    required this.existingCategories,
+    required this.editingIndex,
+  });
+
+  final String? initialValue;
+  final bool isEditing;
+  final List<String> existingCategories;
+  final int? editingIndex;
+
+  @override
+  State<_CategoryNameDialog> createState() => _CategoryNameDialogState();
+}
+
+class _CategoryNameDialogState extends State<_CategoryNameDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller;
+  bool _isClosing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF0B1024),
+      title: Text(
+        widget.isEditing ? 'Edit Kategori' : 'Tambah Kategori',
+        style: const TextStyle(color: Colors.white),
+      ),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Nama kategori',
+            prefixIcon: Icon(Icons.category_outlined),
+          ),
+          validator: (value) {
+            final text = value?.trim() ?? '';
+            if (text.isEmpty) return 'Nama kategori wajib diisi';
+            final exists = widget.existingCategories.asMap().entries.any(
+              (entry) =>
+                  entry.key != widget.editingIndex &&
+                  entry.value.toLowerCase() == text.toLowerCase(),
+            );
+            if (exists) return 'Kategori sudah ada';
+            return null;
+          },
+          onFieldSubmitted: (_) => _submit(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isClosing ? null : () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF7C3AED),
+            foregroundColor: Colors.white,
+          ),
+          onPressed: _isClosing ? null : _submit,
+          child: Text(widget.isEditing ? 'Simpan' : 'Tambah'),
+        ),
+      ],
+    );
+  }
+
+  void _submit() {
+    if (_isClosing || !(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _isClosing = true);
+    Navigator.pop(context, _controller.text.trim());
   }
 }
 
