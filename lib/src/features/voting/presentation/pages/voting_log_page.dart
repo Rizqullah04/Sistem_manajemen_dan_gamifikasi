@@ -237,8 +237,8 @@ class _VotingLogCard extends StatelessWidget {
                   children: [
                     Text(
                       voting.type == VotingType.kegiatan
-                          ? 'Voting Program Kegiatan'
-                          : 'Voting Ketua Ormawa',
+                          ? 'Voting Umum'
+                          : 'Pemilihan Ketua Ormawa',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,

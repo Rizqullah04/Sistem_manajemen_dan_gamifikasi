@@ -114,7 +114,7 @@ class _LiveVotingPreviewPageState extends State<LiveVotingPreviewPage> {
             _VotingHeaderCard(data: data, remainingTime: _remainingTime),
             const SizedBox(height: 16),
             Text(
-              data.isKetua ? 'Daftar Kandidat' : 'Daftar Opsi Kegiatan',
+              data.isKetua ? 'Daftar Kandidat' : 'Daftar Pilihan',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w900,
@@ -515,7 +515,7 @@ class _ActivityCard extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           shape: const StadiumBorder(),
                         ),
-                        child: const Text('Pilih Kegiatan'),
+                        child: const Text('Pilih Opsi'),
                       ),
                     ),
                   ],
@@ -534,7 +534,7 @@ class _ActivityCard extends StatelessWidget {
                       style: FilledButton.styleFrom(
                         shape: const StadiumBorder(),
                       ),
-                      child: const Text('Pilih Kegiatan'),
+                      child: const Text('Pilih Opsi'),
                     ),
                   ],
                 ),

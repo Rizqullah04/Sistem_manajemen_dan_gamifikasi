@@ -30,6 +30,7 @@ class Voting {
     required this.endDate,
     required this.options,
     required this.voterIds,
+    this.title = '',
     this.status = 'AKTIF',
     this.scope = 'faculty',
     this.canVote = true,
@@ -40,6 +41,7 @@ class Voting {
   final VotingType type;
   final String relatedId;
   final String creatorName;
+  final String title;
   final DateTime startDate;
   final DateTime endDate;
   final List<VoteOption> options;
@@ -59,6 +61,7 @@ class Voting {
     VotingType? type,
     String? relatedId,
     String? creatorName,
+    String? title,
     DateTime? startDate,
     DateTime? endDate,
     List<VoteOption>? options,
@@ -73,6 +76,7 @@ class Voting {
       type: type ?? this.type,
       relatedId: relatedId ?? this.relatedId,
       creatorName: creatorName ?? this.creatorName,
+      title: title ?? this.title,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       options: options ?? this.options,

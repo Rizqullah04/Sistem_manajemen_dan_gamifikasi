@@ -161,6 +161,7 @@ class VotingRepositoryImpl implements VotingRepository {
           : VotingType.kegiatan,
       relatedId: json['id_kegiatan']?.toString() ?? '',
       creatorName: _creatorNameFrom(json),
+      title: json['judul_voting']?.toString() ?? '',
       startDate:
           DateTime.tryParse(json['tanggal_mulai']?.toString() ?? '') ??
           DateTime.now(),

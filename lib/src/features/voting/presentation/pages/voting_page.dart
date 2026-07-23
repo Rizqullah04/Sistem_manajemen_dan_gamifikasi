@@ -421,7 +421,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
   void initState() {
     super.initState();
     _selectedType = VotingType.kegiatan;
-    _titleController = TextEditingController(text: 'Polling Kegiatan Ormawa');
+    _titleController = TextEditingController(text: 'Voting Umum');
     _startDate = DateTime.now().add(const Duration(days: 1));
     _endDate = _startDate.add(const Duration(days: 14));
     _optionControllers = [TextEditingController(), TextEditingController()];
@@ -508,7 +508,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Masukkan opsi kegiatan atau tempat yang akan dipilih dalam polling.',
+                              'Buat voting kegiatan, lokasi, Ormawa favorit, atau keputusan umum lainnya.',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: Colors.white70),
                             ),
@@ -536,12 +536,12 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                     segments: const [
                       ButtonSegment(
                         value: VotingType.kegiatan,
-                        label: Text('Polling Kegiatan'),
-                        icon: Icon(Icons.event_note_outlined),
+                        label: Text('Voting Umum'),
+                        icon: Icon(Icons.ballot_outlined),
                       ),
                       ButtonSegment(
                         value: VotingType.ketua,
-                        label: Text('Voting Ketua'),
+                        label: Text('Pemilihan Ketua'),
                         icon: Icon(Icons.emoji_events_outlined),
                       ),
                     ],
@@ -551,15 +551,15 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                         _selectedType = selection.first;
                         _titleController.text =
                             _selectedType == VotingType.ketua
-                            ? 'Voting Ketua Ormawa'
-                            : 'Polling Kegiatan Ormawa';
+                            ? 'Pemilihan Ketua Ormawa'
+                            : 'Voting Umum';
                       });
                     },
                   ),
                   if (_selectedType == VotingType.ketua && !canCreateKetua) ...[
                     const SizedBox(height: 12),
                     const Text(
-                      'Voting ketua terkunci sampai akumulasi poin mencapai batas minimum.',
+                      'Pemilihan ketua terkunci sampai akumulasi poin mencapai batas minimum.',
                       style: TextStyle(color: Colors.amberAccent),
                     ),
                   ],
@@ -569,7 +569,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
                       labelText: 'Judul Voting',
-                      hintText: 'Contoh: Polling Lokasi Seminar',
+                      hintText: 'Contoh: Ormawa Favorit Fakultas Teknik',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -582,7 +582,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Masukkan minimal 2 kegiatan atau tempat yang akan dipilih.',
+                    'Masukkan minimal 2 pilihan sesuai topik voting.',
                     style: TextStyle(color: Colors.white70),
                   ),
                   const SizedBox(height: 12),
@@ -739,8 +739,8 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                           : const Icon(Icons.check_circle_outline),
                       label: Text(
                         _selectedType == VotingType.ketua
-                            ? 'Simpan Voting Ketua'
-                            : 'Simpan Polling Kegiatan',
+                            ? 'Simpan Pemilihan Ketua'
+                            : 'Simpan Voting Umum',
                       ),
                     ),
                   ),
@@ -788,7 +788,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
         widget.user.effectivePoints < widget.minKetuaPoints) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Poin ormawa belum mencukupi untuk voting ketua.'),
+          content: Text('Poin Ormawa belum mencukupi untuk pemilihan ketua.'),
         ),
       );
       return;
@@ -1107,8 +1107,8 @@ class _VotingCard extends ConsumerWidget {
                       children: [
                         Text(
                           voting.type == VotingType.kegiatan
-                              ? 'Voting Penilaian Kegiatan'
-                              : 'Voting Ketua Ormawa',
+                              ? 'Voting Umum'
+                              : 'Pemilihan Ketua Ormawa',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 4),
@@ -1637,10 +1637,12 @@ VotingModel _buildLivePreviewData({
   final isKetua = voting.type == VotingType.ketua;
 
   return VotingModel(
-    tipeVoting: isKetua ? 'KETUA' : 'KEGIATAN',
+    tipeVoting: isKetua ? 'KETUA' : 'UMUM',
     title: isKetua
-        ? 'Voting Ketua Ormawa - $creatorOrmawaName'
-        : 'Voting Program Kegiatan - $creatorOrmawaName',
+        ? 'Pemilihan Ketua Ormawa - $creatorOrmawaName'
+        : voting.title.trim().isEmpty
+        ? 'Voting Umum - $creatorOrmawaName'
+        : voting.title,
     endTime: voting.endDate,
     totalParticipants: totalVotes,
     targetParticipants: participantTarget,
@@ -1662,8 +1664,7 @@ VotingModel _buildLivePreviewData({
               .map(
                 (option) => ActivityVotingOption(
                   name: option.title,
-                  description:
-                      'Rencana kegiatan kolaboratif dari $creatorOrmawaName.',
+                  description: 'Pilihan voting dari $creatorOrmawaName.',
                   estimatedDate: voting.startDate.add(
                     Duration(days: voting.options.indexOf(option) * 7),
                   ),
