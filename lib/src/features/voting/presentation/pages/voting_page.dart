@@ -410,6 +410,7 @@ class _CreateVotingSheet extends ConsumerStatefulWidget {
 class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
   late final TextEditingController _titleController;
   late VotingType _selectedType;
+  VotingCalculationMethod _calculationMethod = VotingCalculationMethod.raw;
   late DateTime _startDate;
   late DateTime _endDate;
   late final List<TextEditingController> _optionControllers;
@@ -549,6 +550,9 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                     onSelectionChanged: (selection) {
                       setState(() {
                         _selectedType = selection.first;
+                        if (_selectedType == VotingType.ketua) {
+                          _calculationMethod = VotingCalculationMethod.raw;
+                        }
                         _titleController.text =
                             _selectedType == VotingType.ketua
                             ? 'Pemilihan Ketua Ormawa'
@@ -556,6 +560,33 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
                       });
                     },
                   ),
+                  if (_selectedType == VotingType.kegiatan &&
+                      widget.user.role == UserRole.adminFaculty) ...[
+                    const SizedBox(height: 18),
+                    DropdownButtonFormField<VotingCalculationMethod>(
+                      initialValue: _calculationMethod,
+                      decoration: const InputDecoration(
+                        labelText: 'Metode Perhitungan Hasil',
+                        helperText:
+                            'Gunakan bobot per prodi untuk voting Ormawa favorit.',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: VotingCalculationMethod.raw,
+                          child: Text('Suara terbanyak'),
+                        ),
+                        DropdownMenuItem(
+                          value:
+                              VotingCalculationMethod.studyProgramWeighted,
+                          child: Text('Bobot seimbang per prodi'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _calculationMethod = value);
+                      },
+                    ),
+                  ],
                   if (_selectedType == VotingType.ketua && !canCreateKetua) ...[
                     const SizedBox(height: 12),
                     const Text(
@@ -808,6 +839,7 @@ class _CreateVotingSheetState extends ConsumerState<_CreateVotingSheet> {
           .createVoting(
             title: _titleController.text.trim(),
             type: _selectedType,
+            calculationMethod: _calculationMethod,
             startDate: _startDate,
             endDate: _endDate,
             pollOptions: pollOptions,
@@ -1097,6 +1129,17 @@ class _VotingCard extends ConsumerWidget {
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
+              if (voting.calculationMethod ==
+                  VotingCalculationMethod.studyProgramWeighted) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Hasil menggunakan bobot seimbang untuk Informatika, Mesin, dan Kimia.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1106,13 +1149,17 @@ class _VotingCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          voting.type == VotingType.kegiatan
-                              ? 'Voting Umum'
-                              : 'Pemilihan Ketua Ormawa',
+                          voting.title.trim().isEmpty
+                              ? voting.type == VotingType.kegiatan
+                                    ? 'Voting Umum'
+                                    : 'Pemilihan Ketua Ormawa'
+                              : voting.title,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 4),
-                        Text('Periode: $periodText'),
+                        Text(
+                          '${voting.type == VotingType.kegiatan ? 'Voting Umum' : 'Pemilihan Ketua'} • Periode: $periodText',
+                        ),
                       ],
                     ),
                   ),
@@ -1155,9 +1202,19 @@ class _VotingCard extends ConsumerWidget {
               const SizedBox(height: 10),
               ...voting.options.map((option) {
                 final ratio = totalVotes == 0 ? 0.0 : option.votes / totalVotes;
+                final displayedRatio =
+                    voting.calculationMethod ==
+                        VotingCalculationMethod.studyProgramWeighted
+                    ? ((option.weightedScore ?? 0) / 100)
+                          .clamp(0.0, 1.0)
+                          .toDouble()
+                    : ratio;
                 return _VoteOptionTile(
                   option: option,
-                  ratio: ratio,
+                  ratio: displayedRatio,
+                  showWeightedScore:
+                      voting.calculationMethod ==
+                      VotingCalculationMethod.studyProgramWeighted,
                   canTap:
                       voting.isActive && !hasVoted && user != null && canUseVote,
                   canVote: canUseVote,
@@ -1284,6 +1341,7 @@ class _VoteOptionTile extends StatelessWidget {
   const _VoteOptionTile({
     required this.option,
     required this.ratio,
+    required this.showWeightedScore,
     required this.canTap,
     required this.canVote,
     required this.ormawaName,
@@ -1292,6 +1350,7 @@ class _VoteOptionTile extends StatelessWidget {
 
   final VoteOption option;
   final double ratio;
+  final bool showWeightedScore;
   final bool canTap;
   final bool canVote;
   final String ormawaName;
@@ -1343,13 +1402,26 @@ class _VoteOptionTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        '${option.votes} suara',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.primary,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${option.votes} suara',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          if (showWeightedScore)
+                            Text(
+                              '${(option.weightedScore ?? 0).toStringAsFixed(2)}%',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                             ),
+                        ],
                       ),
                     ],
                   ),
@@ -1635,6 +1707,11 @@ VotingModel _buildLivePreviewData({
   );
   final participantTarget = totalVotes <= 0 ? 100 : totalVotes + 30;
   final isKetua = voting.type == VotingType.ketua;
+  final isWeighted =
+      voting.calculationMethod ==
+      VotingCalculationMethod.studyProgramWeighted;
+  int effectiveVoteCount(VoteOption option) =>
+      isWeighted ? ((option.weightedScore ?? 0) * 100).round() : option.votes;
 
   return VotingModel(
     tipeVoting: isKetua ? 'KETUA' : 'UMUM',
@@ -1653,7 +1730,7 @@ VotingModel _buildLivePreviewData({
                 (option) => CandidateVotingOption(
                   name: option.title,
                   slogan: 'Bersama membangun ormawa yang aktif dan berdampak.',
-                  voteCount: option.votes,
+                  voteCount: effectiveVoteCount(option),
                 ),
               )
               .toList()
@@ -1664,11 +1741,13 @@ VotingModel _buildLivePreviewData({
               .map(
                 (option) => ActivityVotingOption(
                   name: option.title,
-                  description: 'Pilihan voting dari $creatorOrmawaName.',
+                  description: isWeighted
+                      ? 'Nilai dihitung dengan bobot seimbang per prodi.'
+                      : 'Pilihan voting dari $creatorOrmawaName.',
                   estimatedDate: voting.startDate.add(
                     Duration(days: voting.options.indexOf(option) * 7),
                   ),
-                  voteCount: option.votes,
+                  voteCount: effectiveVoteCount(option),
                   icon: option.title.toLowerCase().contains('webinar')
                       ? Icons.school_rounded
                       : Icons.event_available_rounded,

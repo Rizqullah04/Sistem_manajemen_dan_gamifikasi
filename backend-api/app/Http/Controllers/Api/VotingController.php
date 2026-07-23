@@ -36,10 +36,22 @@ class VotingController extends Controller
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after:tanggal_mulai'],
             'jenis_voting' => ['required', Rule::in(['kegiatan', 'ketua'])],
+            'calculation_method' => ['sometimes', Rule::in(['raw', 'study_program_weighted'])],
             'poll_options' => ['required', 'array', 'min:2'],
             'poll_options.*' => ['required', 'string', 'max:150'],
             'status' => ['sometimes', Rule::in(['aktif', 'selesai'])],
         ]);
+
+        $data['calculation_method'] ??= 'raw';
+        if ($data['jenis_voting'] === 'ketua') {
+            $data['calculation_method'] = 'raw';
+        }
+        if ($data['calculation_method'] === 'study_program_weighted' && $request->user()->role !== 'admin') {
+            return $this->errorResponse(
+                'Metode bobot seimbang per prodi hanya dapat digunakan oleh DPM.',
+                status: 403
+            );
+        }
 
         $kegiatan = null;
         if (! empty($data['id_kegiatan'])) {
@@ -92,10 +104,22 @@ class VotingController extends Controller
             'tanggal_mulai' => ['sometimes', 'date'],
             'tanggal_selesai' => ['sometimes', 'date', 'after:tanggal_mulai'],
             'jenis_voting' => ['sometimes', Rule::in(['kegiatan', 'ketua'])],
+            'calculation_method' => ['sometimes', Rule::in(['raw', 'study_program_weighted'])],
             'poll_options' => ['sometimes', 'array', 'min:2'],
             'poll_options.*' => ['required_with:poll_options', 'string', 'max:150'],
             'status' => ['sometimes', Rule::in(['aktif', 'selesai'])],
         ]);
+
+        $nextType = $data['jenis_voting'] ?? $voting->jenis_voting;
+        $nextMethod = $data['calculation_method'] ?? $voting->calculation_method;
+        if ($nextType === 'ketua') {
+            $data['calculation_method'] = 'raw';
+        } elseif ($nextMethod === 'study_program_weighted' && $request->user()->role !== 'admin') {
+            return $this->errorResponse(
+                'Metode bobot seimbang per prodi hanya dapat digunakan oleh DPM.',
+                status: 403
+            );
+        }
 
         if (array_key_exists('poll_options', $data)) {
             $data['poll_options'] = array_values(array_unique(array_map('trim', $data['poll_options'])));

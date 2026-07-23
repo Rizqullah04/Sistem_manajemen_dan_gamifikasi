@@ -1,21 +1,31 @@
 enum VotingType { kegiatan, ketua }
 
+enum VotingCalculationMethod { raw, studyProgramWeighted }
+
 class VoteOption {
   const VoteOption({
     required this.id,
     required this.title,
     required this.votes,
+    this.weightedScore,
   });
 
   final String id;
   final String title;
   final int votes;
+  final double? weightedScore;
 
-  VoteOption copyWith({String? id, String? title, int? votes}) {
+  VoteOption copyWith({
+    String? id,
+    String? title,
+    int? votes,
+    double? weightedScore,
+  }) {
     return VoteOption(
       id: id ?? this.id,
       title: title ?? this.title,
       votes: votes ?? this.votes,
+      weightedScore: weightedScore ?? this.weightedScore,
     );
   }
 }
@@ -31,6 +41,7 @@ class Voting {
     required this.options,
     required this.voterIds,
     this.title = '',
+    this.calculationMethod = VotingCalculationMethod.raw,
     this.status = 'AKTIF',
     this.scope = 'faculty',
     this.canVote = true,
@@ -42,6 +53,7 @@ class Voting {
   final String relatedId;
   final String creatorName;
   final String title;
+  final VotingCalculationMethod calculationMethod;
   final DateTime startDate;
   final DateTime endDate;
   final List<VoteOption> options;
@@ -62,6 +74,7 @@ class Voting {
     String? relatedId,
     String? creatorName,
     String? title,
+    VotingCalculationMethod? calculationMethod,
     DateTime? startDate,
     DateTime? endDate,
     List<VoteOption>? options,
@@ -77,6 +90,7 @@ class Voting {
       relatedId: relatedId ?? this.relatedId,
       creatorName: creatorName ?? this.creatorName,
       title: title ?? this.title,
+      calculationMethod: calculationMethod ?? this.calculationMethod,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       options: options ?? this.options,

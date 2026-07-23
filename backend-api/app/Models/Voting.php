@@ -17,6 +17,7 @@ class Voting extends Model
         'tanggal_mulai',
         'tanggal_selesai',
         'jenis_voting',
+        'calculation_method',
         'voting_scope',
         'status',
         'poll_options',

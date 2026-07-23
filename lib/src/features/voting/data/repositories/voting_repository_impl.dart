@@ -12,6 +12,7 @@ class VotingRepositoryImpl implements VotingRepository {
   Future<Voting> createVoting({
     required String title,
     required VotingType type,
+    required VotingCalculationMethod calculationMethod,
     required DateTime startDate,
     required DateTime endDate,
     required List<String> pollOptions,
@@ -24,6 +25,10 @@ class VotingRepositoryImpl implements VotingRepository {
           'tanggal_mulai': _formatDate(startDate),
           'tanggal_selesai': _formatDate(endDate),
           'jenis_voting': type == VotingType.ketua ? 'ketua' : 'kegiatan',
+          'calculation_method':
+              calculationMethod == VotingCalculationMethod.studyProgramWeighted
+              ? 'study_program_weighted'
+              : 'raw',
           'poll_options': pollOptions,
           'status': 'aktif',
         },
@@ -119,6 +124,7 @@ class VotingRepositoryImpl implements VotingRepository {
   Voting _mapVoting(Map<String, dynamic> json) {
     final voteDetails = json['vote_details'];
     final pollOptionsJson = json['poll_options'];
+    final weightedResultsJson = json['weighted_results'];
     final counts = <String, int>{};
     final voters = <String>{};
     if (voteDetails is List) {
@@ -143,8 +149,14 @@ class VotingRepositoryImpl implements VotingRepository {
 
     final options = sourceOptions
         .map(
-          (entry) =>
-              VoteOption(id: entry, title: entry, votes: counts[entry] ?? 0),
+          (entry) => VoteOption(
+            id: entry,
+            title: entry,
+            votes: counts[entry] ?? 0,
+            weightedScore: weightedResultsJson is Map
+                ? double.tryParse(weightedResultsJson[entry]?.toString() ?? '')
+                : null,
+          ),
         )
         .toList();
     if (options.isEmpty) {
@@ -162,6 +174,10 @@ class VotingRepositoryImpl implements VotingRepository {
       relatedId: json['id_kegiatan']?.toString() ?? '',
       creatorName: _creatorNameFrom(json),
       title: json['judul_voting']?.toString() ?? '',
+      calculationMethod:
+          json['calculation_method']?.toString() == 'study_program_weighted'
+          ? VotingCalculationMethod.studyProgramWeighted
+          : VotingCalculationMethod.raw,
       startDate:
           DateTime.tryParse(json['tanggal_mulai']?.toString() ?? '') ??
           DateTime.now(),

@@ -38,6 +38,7 @@ class VotingController extends StateNotifier<VotingState> {
   Future<Voting> createVoting({
     required String title,
     required VotingType type,
+    required VotingCalculationMethod calculationMethod,
     required DateTime startDate,
     required DateTime endDate,
     required List<String> pollOptions,
@@ -47,6 +48,7 @@ class VotingController extends StateNotifier<VotingState> {
         .createVoting(
           title: title,
           type: type,
+          calculationMethod: calculationMethod,
           startDate: startDate,
           endDate: endDate,
           pollOptions: pollOptions,

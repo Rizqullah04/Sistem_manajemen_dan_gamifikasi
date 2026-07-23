@@ -206,10 +206,15 @@ class _VotingLogCard extends StatelessWidget {
       0,
       (sum, option) => sum + option.votes,
     );
-    final winner = _winnerOption(voting.options);
-    final winnerPercent = totalVotes == 0
+    final isWeighted =
+        voting.calculationMethod ==
+        VotingCalculationMethod.studyProgramWeighted;
+    final winner = _winnerOption(voting);
+    final winnerPercent = isWeighted
+        ? winner.weightedScore ?? 0
+        : totalVotes == 0
         ? 0
-        : ((winner.votes / totalVotes) * 100).round();
+        : (winner.votes / totalVotes) * 100;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -290,6 +295,7 @@ class _VotingLogCard extends StatelessWidget {
             (option) => _VotingLogOptionRow(
               option: option,
               totalVotes: totalVotes,
+              isWeighted: isWeighted,
             ),
           ),
           const SizedBox(height: 16),
@@ -312,7 +318,7 @@ class _VotingLogCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Hasil Akhir: ${winner.title} Menang ($winnerPercent% Suara)',
+                    'Hasil Akhir: ${winner.title} Menang (${winnerPercent.toStringAsFixed(2)}%${isWeighted ? ' Nilai Berbobot' : ' Suara'})',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -327,12 +333,19 @@ class _VotingLogCard extends StatelessWidget {
     );
   }
 
-  VoteOption _winnerOption(List<VoteOption> options) {
-    if (options.isEmpty) {
+  VoteOption _winnerOption(Voting voting) {
+    if (voting.options.isEmpty) {
       return const VoteOption(id: '-', title: '-', votes: 0);
     }
-    return options.reduce(
-      (current, next) => next.votes > current.votes ? next : current,
+    final isWeighted =
+        voting.calculationMethod ==
+        VotingCalculationMethod.studyProgramWeighted;
+    return voting.options.reduce(
+      (current, next) =>
+          (isWeighted ? next.weightedScore ?? 0 : next.votes) >
+              (isWeighted ? current.weightedScore ?? 0 : current.votes)
+          ? next
+          : current,
     );
   }
 
@@ -372,15 +385,21 @@ class _VotingLogOptionRow extends StatelessWidget {
   const _VotingLogOptionRow({
     required this.option,
     required this.totalVotes,
+    required this.isWeighted,
   });
 
   final VoteOption option;
   final int totalVotes;
+  final bool isWeighted;
 
   @override
   Widget build(BuildContext context) {
-    final ratio = totalVotes == 0 ? 0.0 : option.votes / totalVotes;
-    final percentage = (ratio * 100).round();
+    final percentage = isWeighted
+        ? option.weightedScore ?? 0
+        : totalVotes == 0
+        ? 0.0
+        : option.votes / totalVotes * 100;
+    final ratio = (percentage / 100).clamp(0.0, 1.0).toDouble();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -402,7 +421,9 @@ class _VotingLogOptionRow extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                '${option.votes} suara - $percentage%',
+                isWeighted
+                    ? '${option.votes} suara • ${percentage.toStringAsFixed(2)}% berbobot'
+                    : '${option.votes} suara • ${percentage.toStringAsFixed(2)}%',
                 style: const TextStyle(color: Colors.white70),
               ),
             ],

@@ -125,6 +125,7 @@ class _FakeVotingRepository implements VotingRepository {
   Future<Voting> createVoting({
     required String title,
     required VotingType type,
+    required VotingCalculationMethod calculationMethod,
     required DateTime startDate,
     required DateTime endDate,
     required List<String> pollOptions,
@@ -132,6 +133,7 @@ class _FakeVotingRepository implements VotingRepository {
     final voting = Voting(
       id: 'v${_items.length + 1}',
       type: type,
+      calculationMethod: calculationMethod,
       relatedId: title,
       creatorName: 'BEM Fakultas Teknik',
       startDate: startDate,

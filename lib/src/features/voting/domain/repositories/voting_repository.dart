@@ -5,6 +5,7 @@ abstract class VotingRepository {
   Future<Voting> createVoting({
     required String title,
     required VotingType type,
+    required VotingCalculationMethod calculationMethod,
     required DateTime startDate,
     required DateTime endDate,
     required List<String> pollOptions,

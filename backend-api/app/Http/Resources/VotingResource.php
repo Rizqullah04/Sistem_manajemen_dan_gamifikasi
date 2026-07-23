@@ -20,6 +20,11 @@ class VotingResource extends JsonResource
             'tanggal_mulai' => $this->tanggal_mulai?->format('Y-m-d'),
             'tanggal_selesai' => $this->tanggal_selesai?->format('Y-m-d'),
             'jenis_voting' => $this->jenis_voting,
+            'calculation_method' => $this->calculation_method ?? 'raw',
+            'weighted_results' => $this->when(
+                ($this->calculation_method ?? 'raw') === 'study_program_weighted',
+                fn () => $this->weightedResults()
+            ),
             'voting_scope' => $this->voting_scope,
             'can_vote' => $user !== null && $this->canBeVotedBy($user),
             'eligibility_message' => $user !== null
@@ -31,5 +36,41 @@ class VotingResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    /**
+     * Setiap prodi Teknik memiliki bobot yang sama, terlepas dari jumlah pemilihnya.
+     *
+     * @return array<string, float>
+     */
+    private function weightedResults(): array
+    {
+        $studyProgramCodes = ['3041', '3011', '3021'];
+        $options = is_array($this->poll_options) ? $this->poll_options : [];
+        $scores = array_fill_keys($options, 0.0);
+        $votes = $this->relationLoaded('voteDetails') ? $this->voteDetails : collect();
+
+        foreach ($studyProgramCodes as $studyProgramCode) {
+            $programVotes = $votes->filter(function ($vote) use ($studyProgramCode): bool {
+                $nim = (string) ($vote->user?->nim ?? '');
+
+                return strlen($nim) === 11 && substr($nim, 4, 4) === $studyProgramCode;
+            });
+            $programTotal = $programVotes->count();
+            if ($programTotal === 0) {
+                continue;
+            }
+
+            foreach ($options as $option) {
+                $scores[$option] += $programVotes->where('pilihan', $option)->count()
+                    / $programTotal
+                    / count($studyProgramCodes)
+                    * 100;
+            }
+        }
+
+        return collect($scores)
+            ->map(fn (float $score): float => round($score, 2))
+            ->all();
     }
 }
