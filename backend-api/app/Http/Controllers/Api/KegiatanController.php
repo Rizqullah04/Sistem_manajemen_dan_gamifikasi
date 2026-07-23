@@ -23,14 +23,22 @@ class KegiatanController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $kegiatans = Kegiatan::with(['ormawa', 'kategori', 'votings', 'verifikasis.admin', 'dokumentasiKegiatans'])
             ->withCount('likeKegiatans')
             ->withCount('dislikeKegiatans')
             ->withCount('diskusis')
             ->withExists(['likeKegiatans as disukai_user' => fn ($query) => $query->where('id_user', $request->user()->id_user)])
             ->withExists(['dislikeKegiatans as tidak_disukai_user' => fn ($query) => $query->where('id_user', $request->user()->id_user)])
-            ->when($request->user()->role === 'ormawa', function ($query) use ($request) {
-                $query->where('id_ormawa', $request->user()->id_ormawa);
+            ->when($user->role === 'anggota', function ($query) {
+                $query->where('status', Kegiatan::STATUS_VALID);
+            })
+            ->when($user->role === 'ormawa', function ($query) use ($user) {
+                $query->where(function ($visibilityQuery) use ($user) {
+                    $visibilityQuery
+                        ->where('status', Kegiatan::STATUS_VALID)
+                        ->orWhere('id_ormawa', $user->id_ormawa);
+                });
             })
             ->when($request->status, fn ($query, string $status) => $query->where('status', $status))
             ->when($request->id_ormawa, fn ($query, string $ormawaId) => $query->where('id_ormawa', $ormawaId))
@@ -44,21 +52,36 @@ class KegiatanController extends Controller
     {
         $data = $request->validated();
 
-        if (! $this->userDapatMengaksesOrmawa($request, (int) $data['id_ormawa'])) {
+        if ($request->user()->role === 'admin') {
+            $dpmOrmawa = Ormawa::firstOrCreate(
+                ['nama_ormawa' => 'DPM Fakultas Teknik'],
+                [
+                    'deskripsi' => 'Dewan Perwakilan Mahasiswa Fakultas Teknik',
+                    'total_poin' => 0,
+                ]
+            );
+            $data['id_ormawa'] = $dpmOrmawa->id_ormawa;
+        } elseif (! $this->userDapatMengaksesOrmawa($request, (int) $data['id_ormawa'])) {
             return $this->errorResponse('Anda tidak memiliki akses ke ormawa ini.', status: 403);
         }
 
-        $data['status'] = Kegiatan::STATUS_PENDING;
+        $data['status'] = $request->user()->role === 'admin'
+            ? Kegiatan::STATUS_VALID
+            : Kegiatan::STATUS_PENDING;
         $data['poin_kegiatan'] = 0;
 
         $kegiatan = Kegiatan::create($data)->load(['ormawa', 'kategori', 'votings', 'verifikasis.admin'])->loadCount('likeKegiatans');
 
-        return $this->successResponse('Kegiatan berhasil dibuat', new KegiatanResource($kegiatan), 201);
+        $message = $request->user()->role === 'admin'
+            ? 'Kegiatan DPM berhasil dipublikasikan tanpa poin organisasi.'
+            : 'Kegiatan berhasil dibuat dan menunggu verifikasi.';
+
+        return $this->successResponse($message, new KegiatanResource($kegiatan), 201);
     }
 
     public function show(Kegiatan $kegiatan): JsonResponse
     {
-        if (! $this->userDapatMelihatKegiatan(request(), $kegiatan->id_ormawa)) {
+        if (! $kegiatan->dapatDilihatOleh(request()->user())) {
             return $this->errorResponse('Anda tidak memiliki akses ke kegiatan ini.', status: 403);
         }
 
@@ -75,6 +98,7 @@ class KegiatanController extends Controller
         }
 
         $data = $request->validated();
+        $isDpmActivity = preg_match('/^DPM\b/i', $kegiatan->ormawa?->nama_ormawa ?? '') === 1;
         // Nilai poin kegiatan ditentukan oleh aturan gamifikasi saat diverifikasi,
         // bukan oleh payload dari admin ormawa.
         $data['poin_kegiatan'] = 0;
@@ -84,7 +108,9 @@ class KegiatanController extends Controller
         }
 
         $statusLama = $kegiatan->status;
-        if ($kegiatan->status !== Kegiatan::STATUS_PENDING) {
+        if ($isDpmActivity) {
+            $data['status'] = Kegiatan::STATUS_VALID;
+        } elseif ($kegiatan->status !== Kegiatan::STATUS_PENDING) {
             $data['status'] = Kegiatan::STATUS_PENDING;
         }
 
@@ -121,6 +147,13 @@ class KegiatanController extends Controller
 
     public function verifikasi(VerifikasiKegiatanRequest $request, Kegiatan $kegiatan, PoinService $poinService): JsonResponse
     {
+        if (preg_match('/^DPM\b/i', $kegiatan->ormawa?->nama_ormawa ?? '') === 1) {
+            return $this->errorResponse(
+                'Kegiatan DPM dipublikasikan langsung dan tidak melalui verifikasi poin organisasi.',
+                status: 422
+            );
+        }
+
         $data = $request->validated();
         $kegiatan = DB::transaction(function () use ($request, $kegiatan, $data, $poinService): Kegiatan {
             $lockedKegiatan = Kegiatan::whereKey($kegiatan->id_kegiatan)
@@ -182,12 +215,4 @@ class KegiatanController extends Controller
             ->exists();
     }
 
-    private function userDapatMelihatKegiatan(Request $request, int $ormawaId): bool
-    {
-        if ($request->user()->role === 'anggota') {
-            return true;
-        }
-
-        return $this->userDapatMengaksesOrmawa($request, $ormawaId);
-    }
 }

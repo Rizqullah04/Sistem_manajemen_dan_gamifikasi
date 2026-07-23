@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
 
@@ -8,8 +10,14 @@ abstract class ActivityRepository {
     required User user,
   });
 
-  Future<Activity> createActivity(Activity activity);
-  Future<Activity> updateActivity(Activity activity);
+  Future<Activity> createActivity(
+    Activity activity, {
+    List<ActivityPhotoUpload> photos = const [],
+  });
+  Future<Activity> updateActivity(
+    Activity activity, {
+    List<ActivityPhotoUpload> photos = const [],
+  });
   Future<void> deleteActivity(String activityId);
   Future<void> setActivityLiked(String activityId, bool liked);
   Future<void> setActivityDisliked({
@@ -24,6 +32,13 @@ abstract class ActivityRepository {
     required ActivityStatus status,
     required String note,
   });
+}
+
+class ActivityPhotoUpload {
+  const ActivityPhotoUpload({required this.bytes, required this.fileName});
+
+  final Uint8List bytes;
+  final String fileName;
 }
 
 class ActivityFeedback {

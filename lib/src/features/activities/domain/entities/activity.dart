@@ -32,6 +32,7 @@ class Activity {
     this.isDisliked = false,
     this.organizerName = '',
     this.commentCount = 0,
+    this.documentationPhotos = const [],
   });
 
   final String id;
@@ -51,6 +52,7 @@ class Activity {
   final bool isDisliked;
   final String organizerName;
   final int commentCount;
+  final List<String> documentationPhotos;
 
   Activity copyWith({
     String? id,
@@ -70,6 +72,7 @@ class Activity {
     bool? isDisliked,
     String? organizerName,
     int? commentCount,
+    List<String>? documentationPhotos,
   }) {
     return Activity(
       id: id ?? this.id,
@@ -89,6 +92,7 @@ class Activity {
       isDisliked: isDisliked ?? this.isDisliked,
       organizerName: organizerName ?? this.organizerName,
       commentCount: commentCount ?? this.commentCount,
+      documentationPhotos: documentationPhotos ?? this.documentationPhotos,
     );
   }
 }

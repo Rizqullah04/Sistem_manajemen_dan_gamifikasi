@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DiskusiResource;
 use App\Models\Diskusi;
+use App\Models\Kegiatan;
 use App\Models\PoinLog;
 use App\Services\PoinService;
 use App\Support\ApiResponse;
@@ -17,7 +18,22 @@ class DiskusiController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $diskusis = Diskusi::with('user')
+            ->whereHas('kegiatan', function ($query) use ($user) {
+                if ($user->role === 'admin') {
+                    return;
+                }
+                if ($user->role === 'ormawa') {
+                    $query->where(function ($visibilityQuery) use ($user) {
+                        $visibilityQuery
+                            ->where('status', Kegiatan::STATUS_VALID)
+                            ->orWhere('id_ormawa', $user->id_ormawa);
+                    });
+                    return;
+                }
+                $query->where('status', Kegiatan::STATUS_VALID);
+            })
             ->when($request->id_kegiatan, fn ($query, string $idKegiatan) => $query->where('id_kegiatan', $idKegiatan))
             ->oldest('tanggal')
             ->get();
@@ -27,11 +43,25 @@ class DiskusiController extends Controller
 
     public function store(Request $request, PoinService $poinService): JsonResponse
     {
+        if ($request->user()->role !== 'anggota' || $request->user()->status_akun !== 'aktif') {
+            return $this->errorResponse(
+                'Diskusi hanya dapat diikuti oleh mahasiswa aktif.',
+                status: 403
+            );
+        }
+
         $data = $request->validate([
             'id_kegiatan' => ['required', 'exists:kegiatans,id_kegiatan'],
             'parent_id' => ['nullable', 'exists:diskusis,id_diskusi'],
             'komentar' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
+        $kegiatan = Kegiatan::findOrFail($data['id_kegiatan']);
+        if (! $kegiatan->dapatDiinteraksikan()) {
+            return $this->errorResponse(
+                'Diskusi hanya tersedia untuk kegiatan yang telah disetujui.',
+                status: 422
+            );
+        }
 
         $spamResponse = $this->cekSpamKomentar($request, $data);
         if ($spamResponse !== null) {

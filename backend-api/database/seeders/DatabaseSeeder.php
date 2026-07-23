@@ -41,6 +41,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $ormawaSeeds = [
+            'DPM Fakultas Teknik' => 'Dewan Perwakilan Mahasiswa Fakultas Teknik',
             'BEM Fakultas Teknik' => 'Badan Eksekutif Mahasiswa Fakultas Teknik',
             'HMJTI - Himpunan Mahasiswa Jurusan Teknik Informatika' => 'Organisasi mahasiswa Jurusan Teknik Informatika',
             'HMTM - Himpunan Mahasiswa Teknik Mesin' => 'Organisasi mahasiswa Teknik Mesin',
@@ -71,16 +72,23 @@ class DatabaseSeeder extends Seeder
                 'total_poin' => 0,
             ]);
 
-            User::updateOrCreate([
-                'id_ormawa' => $ormawa->id_ormawa,
-                'role' => 'ormawa',
-            ], [
-                'nama' => $ormawaAccountNames[$namaOrmawa],
-                'email' => $ormawaEmails[$namaOrmawa],
-                'password' => 'password',
-                'status_akun' => 'aktif',
-            ]);
+            if (isset($ormawaEmails[$namaOrmawa])) {
+                User::updateOrCreate([
+                    'id_ormawa' => $ormawa->id_ormawa,
+                    'role' => 'ormawa',
+                ], [
+                    'nama' => $ormawaAccountNames[$namaOrmawa],
+                    'email' => $ormawaEmails[$namaOrmawa],
+                    'password' => 'password',
+                    'status_akun' => 'aktif',
+                ]);
+            }
         }
+
+        User::where('email', 'dpm.ft@ormawa-app.test')->update([
+            'id_ormawa' => Ormawa::where('nama_ormawa', 'DPM Fakultas Teknik')
+                ->value('id_ormawa'),
+        ]);
 
         $periods = Period::query()->orderBy('year')->get();
 

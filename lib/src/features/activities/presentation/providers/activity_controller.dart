@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/repositories/activity_repository.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 
@@ -94,9 +96,14 @@ class ActivityController extends StateNotifier<ActivityState> {
     required DateTime date,
     required String documentation,
     required String category,
+    List<ActivityPhotoUpload> photos = const [],
   }) async {
     final user = _ref.read(authControllerProvider).user;
-    if (user == null || user.ormawaId == null) return;
+    if (user == null ||
+        (user.role != UserRole.adminFaculty &&
+            user.role != UserRole.ormawaAccount)) {
+      return;
+    }
     final activity = Activity(
       id: '',
       title: title,
@@ -105,11 +112,13 @@ class ActivityController extends StateNotifier<ActivityState> {
       documentation: documentation,
       category: category,
       status: ActivityStatus.pending,
-      ormawaId: user.ormawaId!,
+      ormawaId: user.ormawaId ?? '',
       pointsGenerated: 0,
       memberIds: const ['u3', 'u4'],
     );
-    await _ref.read(activityRepositoryProvider).createActivity(activity);
+    await _ref
+        .read(activityRepositoryProvider)
+        .createActivity(activity, photos: photos);
     await loadInitial();
   }
 
@@ -120,6 +129,7 @@ class ActivityController extends StateNotifier<ActivityState> {
     required DateTime date,
     required String documentation,
     required String category,
+    List<ActivityPhotoUpload> photos = const [],
   }) async {
     final updatedActivity = activity.copyWith(
       title: title,
@@ -128,7 +138,9 @@ class ActivityController extends StateNotifier<ActivityState> {
       documentation: documentation,
       category: category,
     );
-    await _ref.read(activityRepositoryProvider).updateActivity(updatedActivity);
+    await _ref
+        .read(activityRepositoryProvider)
+        .updateActivity(updatedActivity, photos: photos);
     await loadInitial();
   }
 
@@ -138,7 +150,9 @@ class ActivityController extends StateNotifier<ActivityState> {
   }
 
   Future<void> toggleLike(Activity activity) async {
-    await _ref.read(activityRepositoryProvider).setActivityLiked(activity.id, !activity.isLiked);
+    await _ref
+        .read(activityRepositoryProvider)
+        .setActivityLiked(activity.id, !activity.isLiked);
     await loadInitial();
     // Like hanya mengubah reaksi kegiatan. Meng-invalidasi seluruh provider
     // dashboard dari controller ini dapat membongkar widget yang masih aktif.

@@ -9,6 +9,8 @@ use App\Models\Kegiatan;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\File;
 
 class DokumentasiKegiatanController extends Controller
 {
@@ -29,7 +31,12 @@ class DokumentasiKegiatanController extends Controller
         $data = $request->validate([
             'id_kegiatan' => ['required', 'exists:kegiatans,id_kegiatan'],
             'caption' => ['nullable', 'string'],
-            'file_url' => ['required', 'string', 'max:2048'],
+            'file_url' => ['nullable', 'url:http,https', 'max:2048', 'required_without:file'],
+            'file' => [
+                'nullable',
+                'required_without:file_url',
+                File::image()->types(['jpg', 'jpeg', 'png'])->max(5 * 1024),
+            ],
         ]);
 
         $kegiatan = Kegiatan::findOrFail($data['id_kegiatan']);
@@ -38,10 +45,21 @@ class DokumentasiKegiatanController extends Controller
             return $this->errorResponse('Anda tidak memiliki akses ke kegiatan ini.', status: 403);
         }
 
-        $data['id_ormawa'] = $kegiatan->id_ormawa;
-        $data['tanggal_upload'] = now();
+        if ($request->hasFile('file')) {
+            $path = $request->file('file')->store(
+                "activity-documentation/{$kegiatan->id_kegiatan}",
+                'public'
+            );
+            $data['file_url'] = asset(Storage::url($path));
+        }
 
-        $dokumentasi = DokumentasiKegiatan::create($data);
+        $dokumentasi = DokumentasiKegiatan::create([
+            'id_kegiatan' => $kegiatan->id_kegiatan,
+            'id_ormawa' => $kegiatan->id_ormawa,
+            'caption' => $data['caption'] ?? null,
+            'file_url' => $data['file_url'],
+            'tanggal_upload' => now(),
+        ]);
 
         return $this->successResponse('Dokumentasi berhasil dibuat', new DokumentasiKegiatanResource($dokumentasi), 201);
     }

@@ -72,4 +72,17 @@ class Kegiatan extends Model
     {
         return $this->hasMany(DislikeKegiatan::class, 'id_kegiatan', 'id_kegiatan');
     }
+
+    public function dapatDilihatOleh(User $user): bool
+    {
+        return $this->status === self::STATUS_VALID
+            || $user->role === 'admin'
+            || ($user->role === 'ormawa'
+                && (int) $user->id_ormawa === (int) $this->id_ormawa);
+    }
+
+    public function dapatDiinteraksikan(): bool
+    {
+        return $this->status === self::STATUS_VALID;
+    }
 }

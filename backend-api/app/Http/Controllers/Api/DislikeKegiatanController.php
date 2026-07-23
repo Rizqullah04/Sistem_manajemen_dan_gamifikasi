@@ -44,14 +44,21 @@ class DislikeKegiatanController extends Controller
 
     public function store(Request $request, PoinService $poinService): JsonResponse
     {
-        if ($request->user()->role !== 'anggota') {
-            return $this->errorResponse('Masukan perbaikan hanya dapat diberikan oleh mahasiswa.', status: 403);
+        if ($request->user()->role !== 'anggota' || $request->user()->status_akun !== 'aktif') {
+            return $this->errorResponse('Masukan perbaikan hanya dapat diberikan oleh mahasiswa aktif.', status: 403);
         }
         $data = $request->validate([
             'id_kegiatan' => ['required', 'exists:kegiatans,id_kegiatan'],
             'alasan' => ['required', 'string', 'min:10', 'max:1000'],
             'solusi' => ['required', 'string', 'min:10', 'max:1000'],
         ]);
+        $kegiatan = Kegiatan::findOrFail($data['id_kegiatan']);
+        if (! $kegiatan->dapatDiinteraksikan()) {
+            return $this->errorResponse(
+                'Masukan hanya tersedia untuk kegiatan yang telah disetujui.',
+                status: 422
+            );
+        }
 
         $dislike = DB::transaction(function () use ($request, $data, $poinService) {
             $like = LikeKegiatan::where('id_kegiatan', $data['id_kegiatan'])

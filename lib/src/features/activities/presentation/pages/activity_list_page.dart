@@ -6,6 +6,7 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/common/widgets/empty_state.d
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/core/providers/app_providers.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
+import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/pages/activity_form_page.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/providers/activity_controller.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/presentation/widgets/activity_dislike_feedback_dialog.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
@@ -26,14 +27,12 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () async {
-        await Future.wait([
-          ref.read(activityControllerProvider.notifier).loadInitial(),
-          _loadCategories(),
-        ]);
-      },
-    );
+    Future.microtask(() async {
+      await Future.wait([
+        ref.read(activityControllerProvider.notifier).loadInitial(),
+        _loadCategories(),
+      ]);
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -80,9 +79,11 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
             ),
         ],
       ),
-      floatingActionButton: user?.role == UserRole.ormawaAccount
+      floatingActionButton:
+          user?.role == UserRole.ormawaAccount ||
+              user?.role == UserRole.adminFaculty
           ? FloatingActionButton.extended(
-              onPressed: () => _showActivityFormDialog(context),
+              onPressed: () => _openActivityFormPage(),
               label: const Text('Input Kegiatan'),
               icon: const Icon(Icons.add),
             )
@@ -128,8 +129,8 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                     return _ActivityCard(
                       activity: activity,
                       userRole: user?.role,
-                      onEdit: () =>
-                          _showActivityFormDialog(context, activity: activity),
+                      userOrmawaId: user?.ormawaId,
+                      onEdit: () => _openActivityFormPage(activity: activity),
                     );
                   },
                 ),
@@ -138,6 +139,30 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
     );
   }
 
+  Future<void> _openActivityFormPage({Activity? activity}) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => ActivityFormPage(
+          categories: List<String>.from(listKategori),
+          activity: activity,
+        ),
+      ),
+    );
+    if (!mounted || saved != true) return;
+    final user = ref.read(authControllerProvider).user;
+    final message = activity != null
+        ? 'Kegiatan berhasil diperbarui.'
+        : user?.role == UserRole.adminFaculty
+        ? 'Kegiatan DPM berhasil dipublikasikan.'
+        : 'Kegiatan berhasil diajukan dan menunggu verifikasi.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // Retained temporarily to keep older edit-flow state compatible while the
+  // full-page form is rolled out.
+  // ignore: unused_element
   Future<void> _showActivityFormDialog(
     BuildContext context, {
     Activity? activity,
@@ -165,9 +190,7 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
             final hasDocumentation = docsController.text.trim().isNotEmpty;
 
             return AlertDialog(
-              title: Text(
-                isEditing ? 'Edit Kegiatan' : 'Input Kegiatan',
-              ),
+              title: Text(isEditing ? 'Edit Kegiatan' : 'Input Kegiatan'),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -216,9 +239,9 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                         onChanged: isSubmitting
                             ? null
                             : (value) {
-                              if (value == null) return;
-                              setDialogState(() => selectedCategory = value);
-                            },
+                                if (value == null) return;
+                                setDialogState(() => selectedCategory = value);
+                              },
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Wajib diisi'
                             : null,
@@ -233,9 +256,9 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                                     ? 'Belum ada kategori. Buat kategori master untuk kebutuhan audit.'
                                     : 'Belum ada kategori master. Hubungi admin DPM; kegiatan tetap dapat disimpan sebagai Tanpa Kategori.',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                   fontSize: 12,
                                 ),
                               ),
@@ -265,9 +288,9 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                           helperStyle: TextStyle(
                             color: hasDocumentation
                                 ? Colors.greenAccent
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                           ),
                           prefixIcon: Icon(
                             hasDocumentation
@@ -359,6 +382,8 @@ class _ActivityListPageState extends ConsumerState<ActivityListPage> {
                                   content: Text(
                                     isEditing
                                         ? 'Kegiatan berhasil diperbarui.'
+                                        : user?.role == UserRole.adminFaculty
+                                        ? 'Kegiatan DPM berhasil dipublikasikan.'
                                         : 'Kegiatan berhasil diajukan dan menunggu verifikasi.',
                                   ),
                                 ),
@@ -531,11 +556,13 @@ class _ActivityCard extends ConsumerWidget {
   const _ActivityCard({
     required this.activity,
     required this.userRole,
+    required this.userOrmawaId,
     required this.onEdit,
   });
 
   final Activity activity;
   final UserRole? userRole;
+  final String? userOrmawaId;
   final VoidCallback onEdit;
 
   Color _statusColor(ActivityStatus status, BuildContext context) {
@@ -551,6 +578,15 @@ class _ActivityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOwner =
+        userRole == UserRole.ormawaAccount &&
+        userOrmawaId != null &&
+        userOrmawaId == activity.ormawaId;
+    final canManageActivity = userRole == UserRole.adminFaculty || isOwner;
+    final canInteract =
+        userRole == UserRole.memberAccount &&
+        activity.status == ActivityStatus.approved;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
@@ -612,21 +648,56 @@ class _ActivityCard extends ConsumerWidget {
                 style: const TextStyle(fontStyle: FontStyle.italic),
               ),
             ],
+            if (activity.documentationPhotos.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 112,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: activity.documentationPhotos.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        activity.documentationPhotos[index],
+                        width: 150,
+                        height: 112,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 150,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 FilledButton.tonalIcon(
-                  onPressed: () => ref
-                      .read(activityControllerProvider.notifier)
-                      .toggleLike(activity),
-                  icon: Icon(activity.isLiked ? Icons.favorite : Icons.favorite_border),
+                  onPressed: canInteract
+                      ? () => ref
+                            .read(activityControllerProvider.notifier)
+                            .toggleLike(activity)
+                      : null,
+                  icon: Icon(
+                    activity.isLiked ? Icons.favorite : Icons.favorite_border,
+                  ),
                   label: Text('${activity.likeCount} Suka'),
                 ),
                 if (userRole == UserRole.memberAccount)
                   OutlinedButton.icon(
-                    onPressed: () => _toggleDislike(context, ref),
+                    onPressed: canInteract
+                        ? () => _toggleDislike(context, ref)
+                        : null,
                     icon: Icon(
                       activity.isDisliked
                           ? Icons.thumb_down_rounded
@@ -634,7 +705,7 @@ class _ActivityCard extends ConsumerWidget {
                     ),
                     label: Text('${activity.dislikeCount} Masukan'),
                   )
-                else
+                else if (canManageActivity)
                   OutlinedButton.icon(
                     onPressed: () => _showFeedback(context, ref),
                     icon: const Icon(Icons.rate_review_outlined),
@@ -644,39 +715,40 @@ class _ActivityCard extends ConsumerWidget {
                   onPressed: activity.documentation.trim().isEmpty
                       ? null
                       : () => showDialog<void>(
-                            context: context,
-                            builder: (dialogContext) => AlertDialog(
-                              title: const Text('Dokumentasi Kegiatan'),
-                              content: SelectableText(activity.documentation),
-                              actions: [
-                                TextButton.icon(
-                                  onPressed: () async {
-                                    await Clipboard.setData(
-                                      ClipboardData(text: activity.documentation),
-                                    );
-                                    if (dialogContext.mounted) {
-                                      Navigator.pop(dialogContext);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Tautan dokumentasi disalin.'),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(Icons.copy_outlined),
-                                  label: const Text('Salin Tautan'),
-                                ),
-                                FilledButton(
-                                  onPressed: () => Navigator.pop(dialogContext),
-                                  child: const Text('Tutup'),
-                                ),
-                              ],
-                            ),
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Dokumentasi Lengkap'),
+                            content: SelectableText(activity.documentation),
+                            actions: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: activity.documentation),
+                                  );
+                                  if (!dialogContext.mounted) return;
+                                  Navigator.pop(dialogContext);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Tautan dokumentasi disalin.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy_outlined),
+                                label: const Text('Salin Tautan'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: const Text('Tutup'),
+                              ),
+                            ],
                           ),
+                        ),
                   icon: const Icon(Icons.link_outlined),
-                  label: const Text('Lihat Dokumentasi'),
+                  label: const Text('Dokumentasi Lengkap'),
                 ),
-                if (userRole == UserRole.ormawaAccount) ...[
+                if (canManageActivity) ...[
                   OutlinedButton.icon(
                     onPressed: onEdit,
                     icon: const Icon(Icons.edit_outlined),
@@ -694,13 +766,19 @@ class _ActivityCard extends ConsumerWidget {
               title: const Text('Lihat Diskusi'),
               childrenPadding: const EdgeInsets.only(top: 8),
               children: [
-                DiscussionSection(activityId: activity.id),
+                DiscussionSection(
+                  activityId: activity.id,
+                  canComment: canInteract,
+                ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    if (userRole == UserRole.adminFaculty) ...[
+                    if (userRole == UserRole.adminFaculty &&
+                        !activity.organizerName.toUpperCase().startsWith(
+                          'DPM',
+                        )) ...[
                       FilledButton.icon(
                         onPressed: () async {
                           await ref
@@ -758,7 +836,9 @@ class _ActivityCard extends ConsumerWidget {
       solution = result.solution;
     }
 
-    await ref.read(activityRepositoryProvider).setActivityDisliked(
+    await ref
+        .read(activityRepositoryProvider)
+        .setActivityDisliked(
           activityId: activity.id,
           disliked: !activity.isDisliked,
           reason: reason,
@@ -814,9 +894,9 @@ class _ActivityCard extends ConsumerWidget {
       );
     } on AppException catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 

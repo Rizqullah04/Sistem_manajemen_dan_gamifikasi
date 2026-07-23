@@ -12,9 +12,14 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/features/discussion/presenta
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/gamification/presentation/providers/point_sync_provider.dart';
 
 class DiscussionSection extends ConsumerStatefulWidget {
-  const DiscussionSection({required this.activityId, super.key});
+  const DiscussionSection({
+    required this.activityId,
+    this.canComment = true,
+    super.key,
+  });
 
   final String activityId;
+  final bool canComment;
 
   @override
   ConsumerState<DiscussionSection> createState() => _DiscussionSectionState();
@@ -130,31 +135,40 @@ class _DiscussionSectionState extends ConsumerState<DiscussionSection> {
                 },
               ),
             const SizedBox(height: 8),
-            if (currentUser != null &&
+            if (widget.canComment &&
+                currentUser != null &&
                 currentUser.role != UserRole.adminFaculty)
               _buildSpamGuardNotice(comments, currentUser.id),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Tulis komentar...',
+            if (widget.canComment)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        hintText: 'Tulis komentar...',
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: _isSubmitting ? null : _submitComment,
+                    icon: _isSubmitting
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send_rounded),
+                  ),
+                ],
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Mode baca: komentar hanya dapat dikirim mahasiswa aktif pada kegiatan yang telah disetujui.',
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _isSubmitting ? null : _submitComment,
-                  icon: _isSubmitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_rounded),
-                ),
-              ],
-            ),
+              ),
           ],
         );
       },

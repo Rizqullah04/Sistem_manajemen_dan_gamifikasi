@@ -3,7 +3,6 @@ import 'package:sistem_manajemen_dan_gamifikasi/src/core/error/app_exception.dar
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/entities/activity.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/activities/domain/repositories/activity_repository.dart';
 import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user.dart';
-import 'package:sistem_manajemen_dan_gamifikasi/src/features/auth/domain/entities/user_role.dart';
 
 class ActivityRepositoryImpl implements ActivityRepository {
   ActivityRepositoryImpl(this._dio);
@@ -11,13 +10,16 @@ class ActivityRepositoryImpl implements ActivityRepository {
   final Dio _dio;
 
   @override
-  Future<Activity> createActivity(Activity activity) async {
+  Future<Activity> createActivity(
+    Activity activity, {
+    List<ActivityPhotoUpload> photos = const [],
+  }) async {
     final categoryId = await _resolveCategoryId(activity.category);
     final response = await _safeRequest(
       () => _dio.post<Map<String, dynamic>>(
         '/kegiatans',
         data: {
-          'id_ormawa': activity.ormawaId,
+          if (activity.ormawaId.isNotEmpty) 'id_ormawa': activity.ormawaId,
           'nama_kegiatan': activity.title,
           'deskripsi': activity.description,
           'tanggal': _formatDate(activity.date),
@@ -28,12 +30,9 @@ class ActivityRepositoryImpl implements ActivityRepository {
     );
     final created = _mapActivity(_dataMap(response));
     if (activity.documentation.trim().isNotEmpty) {
-      await _storeDocumentation(
-        created.id,
-        activity.title,
-        activity.documentation,
-      );
+      await _storeDocumentation(created.id, activity.documentation);
     }
+    await _storeDocumentationPhotos(created.id, photos);
     return created;
   }
 
@@ -48,7 +47,10 @@ class ActivityRepositoryImpl implements ActivityRepository {
   Future<void> setActivityLiked(String activityId, bool liked) async {
     await _safeRequest(
       () => liked
-          ? _dio.post<Map<String, dynamic>>('/like-kegiatans', data: {'id_kegiatan': activityId})
+          ? _dio.post<Map<String, dynamic>>(
+              '/like-kegiatans',
+              data: {'id_kegiatan': activityId},
+            )
           : _dio.delete<Map<String, dynamic>>('/kegiatans/$activityId/like'),
     );
   }
@@ -70,9 +72,7 @@ class ActivityRepositoryImpl implements ActivityRepository {
                 'solusi': solution,
               },
             )
-          : _dio.delete<Map<String, dynamic>>(
-              '/kegiatans/$activityId/dislike',
-            ),
+          : _dio.delete<Map<String, dynamic>>('/kegiatans/$activityId/dislike'),
     );
   }
 
@@ -81,15 +81,13 @@ class ActivityRepositoryImpl implements ActivityRepository {
     String activityId,
   ) async {
     final response = await _safeRequest(
-      () => _dio.get<Map<String, dynamic>>(
-        '/kegiatans/$activityId/feedback',
-      ),
+      () => _dio.get<Map<String, dynamic>>('/kegiatans/$activityId/feedback'),
     );
     return _dataList(response)
         .map(
           (item) => ActivityFeedback(
-            userName: (item['user'] as Map?)?['nama']?.toString() ??
-                'Mahasiswa',
+            userName:
+                (item['user'] as Map?)?['nama']?.toString() ?? 'Mahasiswa',
             reason: item['alasan']?.toString() ?? '-',
             solution: item['solusi']?.toString() ?? '-',
             createdAt: DateTime.tryParse(item['created_at']?.toString() ?? ''),
@@ -105,13 +103,7 @@ class ActivityRepositoryImpl implements ActivityRepository {
     required User user,
   }) async {
     final response = await _safeRequest(
-      () => _dio.get<Map<String, dynamic>>(
-        '/kegiatans',
-        queryParameters: {
-          if (user.role == UserRole.ormawaAccount && user.ormawaId != null)
-            'id_ormawa': user.ormawaId,
-        },
-      ),
+      () => _dio.get<Map<String, dynamic>>('/kegiatans'),
     );
     final all = _dataList(response).map(_mapActivity).toList();
     final start = (page - 1) * pageSize;
@@ -126,7 +118,10 @@ class ActivityRepositoryImpl implements ActivityRepository {
   }
 
   @override
-  Future<Activity> updateActivity(Activity activity) async {
+  Future<Activity> updateActivity(
+    Activity activity, {
+    List<ActivityPhotoUpload> photos = const [],
+  }) async {
     final categoryId = await _resolveCategoryId(activity.category);
     final response = await _safeRequest(
       () => _dio.patch<Map<String, dynamic>>(
@@ -144,12 +139,9 @@ class ActivityRepositoryImpl implements ActivityRepository {
     final updated = _mapActivity(_dataMap(response));
     if (activity.documentation.trim().isNotEmpty &&
         activity.documentation.trim() != updated.documentation.trim()) {
-      await _storeDocumentation(
-        activity.id,
-        activity.title,
-        activity.documentation,
-      );
+      await _storeDocumentation(activity.id, activity.documentation);
     }
+    await _storeDocumentationPhotos(activity.id, photos);
     return updated;
   }
 
@@ -183,10 +175,17 @@ class ActivityRepositoryImpl implements ActivityRepository {
     };
     final docs = json['dokumentasi_kegiatans'];
     String documentation = '';
+    final documentationPhotos = <String>[];
     if (docs is List) {
       final docMaps = docs.whereType<Map>().toList();
-      if (docMaps.isNotEmpty) {
-        documentation = docMaps.last['file_url']?.toString() ?? '';
+      for (final doc in docMaps) {
+        final url = doc['file_url']?.toString() ?? '';
+        if (url.isEmpty) continue;
+        if (doc['caption']?.toString() == 'Foto kegiatan') {
+          documentationPhotos.add(url);
+        } else {
+          documentation = url;
+        }
       }
     }
     final verifications = json['verifikasis'];
@@ -219,13 +218,14 @@ class ActivityRepositoryImpl implements ActivityRepository {
       isLiked: json['disukai_user'] == true || json['disukai_user'] == 1,
       dislikeCount:
           int.tryParse(json['jumlah_dislike']?.toString() ?? '0') ?? 0,
-      isDisliked: json['tidak_disukai_user'] == true ||
-          json['tidak_disukai_user'] == 1,
+      isDisliked:
+          json['tidak_disukai_user'] == true || json['tidak_disukai_user'] == 1,
       organizerName: json['ormawa'] is Map
           ? ((json['ormawa'] as Map)['nama_ormawa']?.toString() ?? '')
           : '',
       commentCount:
           int.tryParse(json['jumlah_komentar']?.toString() ?? '0') ?? 0,
+      documentationPhotos: documentationPhotos,
     );
   }
 
@@ -234,7 +234,6 @@ class ActivityRepositoryImpl implements ActivityRepository {
 
   Future<void> _storeDocumentation(
     String activityId,
-    String title,
     String documentation,
   ) async {
     await _safeRequest(
@@ -242,11 +241,32 @@ class ActivityRepositoryImpl implements ActivityRepository {
         '/dokumentasi-kegiatans',
         data: {
           'id_kegiatan': activityId,
-          'caption': title,
+          'caption': 'Dokumentasi lengkap',
           'file_url': documentation.trim(),
         },
       ),
     );
+  }
+
+  Future<void> _storeDocumentationPhotos(
+    String activityId,
+    List<ActivityPhotoUpload> photos,
+  ) async {
+    for (final photo in photos) {
+      await _safeRequest(
+        () => _dio.post<Map<String, dynamic>>(
+          '/dokumentasi-kegiatans',
+          data: FormData.fromMap({
+            'id_kegiatan': activityId,
+            'caption': 'Foto kegiatan',
+            'file': MultipartFile.fromBytes(
+              photo.bytes,
+              filename: photo.fileName,
+            ),
+          }),
+        ),
+      );
+    }
   }
 
   Future<String?> _resolveCategoryId(String name) async {
