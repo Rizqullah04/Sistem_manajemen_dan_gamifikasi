@@ -661,6 +661,7 @@ class _ActivityCard extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(14),
                       child: Image.network(
                         activity.documentationPhotos[index],
+                        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                         width: 150,
                         height: 112,
                         fit: BoxFit.cover,

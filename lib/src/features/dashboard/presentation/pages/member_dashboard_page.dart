@@ -496,6 +496,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                       borderRadius: BorderRadius.circular(16),
                       child: Image.network(
                         item.documentationPhotos.first,
+                        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                         width: double.infinity,
                         height: 170,
                         fit: BoxFit.cover,
@@ -838,6 +839,8 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                                 ),
                                 child: Image.network(
                                   photos[index],
+                                  webHtmlElementStrategy:
+                                      WebHtmlElementStrategy.fallback,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
@@ -1120,6 +1123,7 @@ class _MemberDashboardPageState extends ConsumerState<MemberDashboardPage> {
                     maxScale: 4,
                     child: Image.network(
                       photoUrl,
+                      webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const Column(
                         mainAxisSize: MainAxisSize.min,
