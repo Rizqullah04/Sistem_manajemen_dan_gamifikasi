@@ -516,79 +516,119 @@ class _StudentCard extends StatelessWidget {
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 10,
-        ),
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Text(
-            initials,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        title: Text(
-          student.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _StudentMeta(
-                icon: Icons.apartment_rounded,
-                label: student.ormawaName,
-              ),
-              const SizedBox(height: 4),
-              _StudentMeta(icon: Icons.badge_outlined, label: student.nim),
-              const SizedBox(height: 4),
-              _StudentMeta(
-                icon: Icons.mail_outline_rounded,
-                label: student.email,
-              ),
-              const SizedBox(height: 4),
-              _StudentMeta(
-                icon: Icons.account_balance_outlined,
-                label: student.isBemMember ? 'Anggota BEM' : 'Belum masuk BEM',
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _BemMembershipButton(
-                      student: student,
-                      isUpdating: isUpdatingBem,
-                      onChanged: onBemMembershipChanged,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w800,
                     ),
-                    _DpmMembershipButton(
-                      student: student,
-                      isUpdating: isUpdatingDpm,
-                      onChanged: onDpmMembershipChanged,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              _StudentMeta(
-                icon: Icons.stars_outlined,
-                label: '${student.points} poin',
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    student.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _StatusChip(student: student),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _StudentMeta(
+              icon: Icons.apartment_rounded,
+              label: student.ormawaName,
+            ),
+            const SizedBox(height: 4),
+            _StudentMeta(icon: Icons.badge_outlined, label: student.nim),
+            const SizedBox(height: 4),
+            _StudentMeta(
+              icon: Icons.mail_outline_rounded,
+              label: student.email,
+            ),
+            const SizedBox(height: 4),
+            _StudentMeta(
+              icon: Icons.account_balance_outlined,
+              label: student.isBemMember ? 'Anggota BEM' : 'Belum masuk BEM',
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _BemMembershipButton(
+                  student: student,
+                  isUpdating: isUpdatingBem,
+                  onChanged: onBemMembershipChanged,
+                ),
+                ..._dpmActionButtons(context),
+              ],
+            ),
+            const SizedBox(height: 4),
+            _StudentMeta(
+              icon: Icons.stars_outlined,
+              label: '${student.points} poin',
+            ),
+          ],
         ),
-        trailing: _StatusChip(student: student),
       ),
     );
+  }
+
+  List<Widget> _dpmActionButtons(BuildContext context) {
+    if (isUpdatingDpm) {
+      return const [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ];
+    }
+
+    if (student.isDpmMember) {
+      return [
+        OutlinedButton.icon(
+          onPressed: student.isActive
+              ? () => onDpmMembershipChanged(student, true)
+              : null,
+          icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+          label: const Text('Ubah DPM'),
+        ),
+        IconButton.outlined(
+          onPressed: student.isActive
+              ? () => onDpmMembershipChanged(student, false)
+              : null,
+          tooltip: 'Akhiri jabatan DPM',
+          icon: const Icon(Icons.person_remove_alt_1_outlined, size: 18),
+        ),
+      ];
+    }
+
+    return [
+      OutlinedButton.icon(
+        onPressed: student.isActive
+            ? () => onDpmMembershipChanged(student, true)
+            : null,
+        icon: const Icon(Icons.how_to_reg_outlined, size: 18),
+        label: const Text('Tunjuk DPM'),
+      ),
+    ];
   }
 }
 
